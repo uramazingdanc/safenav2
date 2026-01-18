@@ -123,31 +123,11 @@ const LoginScreen = () => {
               </Button>
             </form>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  {t.orContinueWith}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1">
-                Google
-              </Button>
-              <Button variant="outline" className="flex-1">
-                Apple
-              </Button>
-            </div>
-
             {/* Help Link */}
             <button
               type="button"
               onClick={() => setShowVideo(true)}
-              className="flex items-center justify-center gap-2 w-full text-sm text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center justify-center gap-2 w-full text-sm text-muted-foreground hover:text-primary transition-colors pt-2"
             >
               <HelpCircle className="w-4 h-4" />
               {t.helpGuide}
