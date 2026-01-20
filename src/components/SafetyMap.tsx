@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Navigation, AlertTriangle, Building2 } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -252,7 +252,8 @@ const SafetyMap = () => {
             <Marker key={hazard.id} position={[hazard.lat, hazard.lng]} icon={hazardIcon}>
               <Popup>
                 <div className="text-center">
-                  <AlertTriangle className="w-4 h-4 text-red-600 mx-auto mb-1" />
+                  <span className="text-red-600 text-lg">⚠️</span>
+                  <br />
                   <strong className="text-red-600">{hazard.name}</strong>
                   <p className="text-xs capitalize">{hazard.type}</p>
                 </div>
@@ -265,7 +266,8 @@ const SafetyMap = () => {
             <Marker key={center.id} position={[center.lat, center.lng]} icon={evacIcon}>
               <Popup>
                 <div className="text-center">
-                  <Building2 className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                  <span className="text-green-600 text-lg">🏢</span>
+                  <br />
                   <strong className="text-green-600">{center.name}</strong>
                   <p className="text-xs">Evacuation Center</p>
                 </div>
