@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, HelpCircle } from 'lucide-react';
+import { Shield, HelpCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import LanguageToggle from './LanguageToggle';
 import TermsModal from './TermsModal';
 import VideoManualModal from './VideoManualModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const barangays = [
@@ -39,13 +40,23 @@ const LoginScreen = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
+  const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!termsAccepted) {
+    
+    if (!termsAccepted && !isSignUp) {
       toast({
         title: 'Terms Required',
         description: 'Please accept the Terms and Conditions to continue.',
@@ -54,26 +65,68 @@ const LoginScreen = () => {
       return;
     }
 
-    if (isSignUp) {
-      if (!fullName || !phoneNumber || !barangay) {
-        toast({
-          title: 'Required Fields',
-          description: 'Please fill in all required fields.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    if (isSignUp && (!fullName || !phoneNumber || !barangay)) {
       toast({
-        title: t.success,
-        description: 'Account created successfully! Welcome to SafeNav.',
+        title: 'Required Fields',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
       });
-    } else {
-      toast({
-        title: t.success,
-        description: 'Welcome back to SafeNav!',
-      });
+      return;
     }
-    navigate('/dashboard');
+
+    setIsLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { error } = await signUp(email, password, {
+          full_name: fullName,
+          phone_number: phoneNumber,
+          barangay: barangay
+        });
+
+        if (error) {
+          let message = error.message;
+          if (error.message.includes('already registered')) {
+            message = 'This email is already registered. Please sign in instead.';
+          }
+          toast({
+            title: 'Sign Up Failed',
+            description: message,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        toast({
+          title: t.success,
+          description: 'Account created successfully! Welcome to SafeNav.',
+        });
+        navigate('/dashboard');
+      } else {
+        const { error } = await signIn(email, password);
+
+        if (error) {
+          let message = error.message;
+          if (error.message.includes('Invalid login credentials')) {
+            message = 'Invalid email or password. Please try again.';
+          }
+          toast({
+            title: 'Sign In Failed',
+            description: message,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        toast({
+          title: t.success,
+          description: 'Welcome back to SafeNav!',
+        });
+        navigate('/dashboard');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -114,6 +167,7 @@ const LoginScreen = () => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
+                      disabled={isLoading}
                     />
                   </div>
 
@@ -127,13 +181,14 @@ const LoginScreen = () => {
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       required
+                      disabled={isLoading}
                     />
                   </div>
 
                   {/* Barangay */}
                   <div className="space-y-2">
                     <Label>Barangay</Label>
-                    <Select value={barangay} onValueChange={setBarangay}>
+                    <Select value={barangay} onValueChange={setBarangay} disabled={isLoading}>
                       <SelectTrigger className="bg-card">
                         <SelectValue placeholder="Select your barangay" />
                       </SelectTrigger>
@@ -159,6 +214,7 @@ const LoginScreen = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -173,6 +229,7 @@ const LoginScreen = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
+                  disabled={isLoading}
                 />
               </div>
 
@@ -205,6 +262,7 @@ const LoginScreen = () => {
                     id="terms"
                     checked={termsAccepted}
                     onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                    disabled={isLoading}
                   />
                   <div className="text-sm leading-none">
                     <label htmlFor="terms" className="cursor-pointer">
@@ -224,12 +282,16 @@ const LoginScreen = () => {
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-semibold"
-                disabled={!isSignUp && !termsAccepted}
-                onClick={() => {
-                  if (isSignUp) setTermsAccepted(true);
-                }}
+                disabled={isLoading || (!isSignUp && !termsAccepted)}
               >
-                {isSignUp ? t.signUp : t.signIn}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                  </>
+                ) : (
+                  isSignUp ? t.signUp : t.signIn
+                )}
               </Button>
             </form>
 
@@ -244,6 +306,7 @@ const LoginScreen = () => {
                     setTermsAccepted(false);
                   }}
                   className="text-primary font-semibold hover:underline"
+                  disabled={isLoading}
                 >
                   {isSignUp ? t.signIn : t.signUp}
                 </button>
@@ -255,6 +318,7 @@ const LoginScreen = () => {
               type="button"
               onClick={() => setShowVideo(true)}
               className="flex items-center justify-center gap-2 w-full text-sm text-muted-foreground hover:text-primary transition-colors pt-2"
+              disabled={isLoading}
             >
               <HelpCircle className="w-4 h-4" />
               {t.helpGuide}
@@ -266,6 +330,7 @@ const LoginScreen = () => {
                 type="button"
                 onClick={() => navigate('/admin/login')}
                 className="text-sm text-muted-foreground hover:text-destructive transition-colors"
+                disabled={isLoading}
               >
                 {t.adminAccess} →
               </button>

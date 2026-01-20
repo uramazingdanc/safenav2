@@ -4,10 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Auth
 import LoginScreen from "./components/LoginScreen";
 import AdminLogin from "./components/AdminLogin";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // User Layout & Pages
 import UserLayout from "./components/UserLayout";
@@ -31,40 +33,50 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Auth Routes */}
-            <Route path="/" element={<LoginScreen />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
+    <AuthProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Auth Routes */}
+              <Route path="/" element={<LoginScreen />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
 
-            {/* User Routes */}
-            <Route element={<UserLayout />}>
-              <Route path="/dashboard" element={<UserDashboard />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/report" element={<ReportHazard />} />
-              <Route path="/hotlines" element={<EmergencyHotlines />} />
-              <Route path="/profile" element={<UserProfile />} />
-            </Route>
+              {/* User Routes */}
+              <Route element={
+                <ProtectedRoute>
+                  <UserLayout />
+                </ProtectedRoute>
+              }>
+                <Route path="/dashboard" element={<UserDashboard />} />
+                <Route path="/map" element={<MapPage />} />
+                <Route path="/report" element={<ReportHazard />} />
+                <Route path="/hotlines" element={<EmergencyHotlines />} />
+                <Route path="/profile" element={<UserProfile />} />
+              </Route>
 
-            {/* Admin Routes */}
-            <Route element={<AdminLayout />}>
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/hazards" element={<AdminHazards />} />
-              <Route path="/admin/centers" element={<AdminEvacCenters />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/reports" element={<AdminReports />} />
-            </Route>
+              {/* Admin Routes */}
+              <Route element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }>
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/hazards" element={<AdminHazards />} />
+                <Route path="/admin/centers" element={<AdminEvacCenters />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/reports" element={<AdminReports />} />
+              </Route>
 
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </LanguageProvider>
+              {/* Catch-all */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </LanguageProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

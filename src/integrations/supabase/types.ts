@@ -14,16 +14,218 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      evacuation_centers: {
+        Row: {
+          amenities: string[] | null
+          capacity: number
+          contact_number: string | null
+          created_at: string
+          current_occupancy: number
+          id: string
+          latitude: number | null
+          location: string
+          longitude: number | null
+          name: string
+          status: Database["public"]["Enums"]["evac_status"]
+          updated_at: string
+        }
+        Insert: {
+          amenities?: string[] | null
+          capacity?: number
+          contact_number?: string | null
+          created_at?: string
+          current_occupancy?: number
+          id?: string
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          name: string
+          status?: Database["public"]["Enums"]["evac_status"]
+          updated_at?: string
+        }
+        Update: {
+          amenities?: string[] | null
+          capacity?: number
+          contact_number?: string | null
+          created_at?: string
+          current_occupancy?: number
+          id?: string
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          name?: string
+          status?: Database["public"]["Enums"]["evac_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hazard_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          hazard_type: string
+          id: string
+          latitude: number | null
+          location: string
+          longitude: number | null
+          photo_url: string | null
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["report_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          hazard_type: string
+          id?: string
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          photo_url?: string | null
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          hazard_type?: string
+          id?: string
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          photo_url?: string | null
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hazards: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          latitude: number | null
+          location: string
+          longitude: number | null
+          photo_url: string | null
+          severity: Database["public"]["Enums"]["hazard_severity"]
+          status: Database["public"]["Enums"]["hazard_status"]
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          photo_url?: string | null
+          severity?: Database["public"]["Enums"]["hazard_severity"]
+          status?: Database["public"]["Enums"]["hazard_status"]
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          photo_url?: string | null
+          severity?: Database["public"]["Enums"]["hazard_severity"]
+          status?: Database["public"]["Enums"]["hazard_status"]
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          barangay: string | null
+          created_at: string
+          full_name: string
+          id: string
+          phone_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          barangay?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          barangay?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_or_moderator: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      evac_status: "open" | "full" | "standby" | "closed"
+      hazard_severity: "low" | "medium" | "high" | "critical"
+      hazard_status: "active" | "resolved" | "monitoring"
+      report_status: "pending" | "verified" | "resolved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +352,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      evac_status: ["open", "full", "standby", "closed"],
+      hazard_severity: ["low", "medium", "high", "critical"],
+      hazard_status: ["active", "resolved", "monitoring"],
+      report_status: ["pending", "verified", "resolved", "rejected"],
+    },
   },
 } as const

@@ -1,20 +1,46 @@
-import { User, Settings, Bell, Shield, LogOut, ChevronRight } from 'lucide-react';
+import { User, Settings, Bell, Shield, LogOut, ChevronRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfiles';
 
 const UserProfile = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { user, signOut } = useAuth();
+  const { data: profile, isLoading } = useProfile();
 
   const menuItems = [
     { icon: Bell, label: 'Notifications', description: 'Manage alert preferences' },
     { icon: Shield, label: 'Privacy & Security', description: 'Account security settings' },
     { icon: Settings, label: 'App Settings', description: 'Customize your experience' },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
@@ -24,34 +50,38 @@ const UserProfile = () => {
           <div className="flex items-center gap-4">
             <Avatar className="w-16 h-16">
               <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                JD
+                {profile?.full_name ? getInitials(profile.full_name) : 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h2 className="text-xl font-bold">Juan Dela Cruz</h2>
-              <p className="text-sm text-muted-foreground">juan@email.com</p>
-              <p className="text-xs text-muted-foreground mt-1">Member since 2024</p>
+              <h2 className="text-xl font-bold">{profile?.full_name || 'User'}</h2>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+              {profile?.barangay && (
+                <p className="text-xs text-muted-foreground mt-1">Brgy. {profile.barangay}</p>
+              )}
             </div>
             <Button variant="outline" size="sm">Edit</Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Emergency Contact */}
-      <Card>
-        <CardHeader className="pb-2">
-          <h3 className="font-semibold">Emergency Contact</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Maria Dela Cruz</p>
-              <p className="text-sm text-muted-foreground">+63 912 345 6789</p>
+      {/* Contact Info */}
+      {profile?.phone_number && (
+        <Card>
+          <CardHeader className="pb-2">
+            <h3 className="font-semibold">Contact Information</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Phone Number</p>
+                <p className="text-sm text-muted-foreground">{profile.phone_number}</p>
+              </div>
+              <Button variant="ghost" size="sm">Edit</Button>
             </div>
-            <Button variant="ghost" size="sm">Edit</Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Settings Menu */}
       <Card>
@@ -100,7 +130,7 @@ const UserProfile = () => {
       <Button
         variant="outline"
         className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground"
-        onClick={() => navigate('/')}
+        onClick={handleSignOut}
       >
         <LogOut className="w-4 h-4 mr-2" />
         Sign Out
