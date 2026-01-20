@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import { useActiveHazards } from '@/hooks/useHazards';
+import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
 
 // OpenLayers imports
 import Map from 'ol/Map';
@@ -14,26 +16,13 @@ import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import OSM from 'ol/source/OSM';
-import { fromLonLat, toLonLat } from 'ol/proj';
+import { fromLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import LineString from 'ol/geom/LineString';
 import { Style, Circle, Fill, Stroke } from 'ol/style';
 import Overlay from 'ol/Overlay';
 import 'ol/ol.css';
-
-// Sample hazards data
-const hazards = [
-  { id: 1, lat: 10.315, lng: 123.885, name: 'Flood Zone', type: 'flood' },
-  { id: 2, lat: 10.320, lng: 123.900, name: 'Landslide Risk', type: 'landslide' },
-  { id: 3, lat: 10.308, lng: 123.892, name: 'Road Damage', type: 'infrastructure' },
-];
-
-// Sample evacuation centers
-const evacCenters = [
-  { id: 1, lat: 10.310, lng: 123.880, name: 'City Hall Evac Center' },
-  { id: 2, lat: 10.325, lng: 123.895, name: 'School Gymnasium' },
-];
 
 // Marker styles
 const userStyle = new Style({
@@ -77,15 +66,21 @@ const SafetyMap = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
 
+  // Fetch real data from database
+  const { data: hazards = [], isLoading: hazardsLoading } = useActiveHazards();
+  const { data: evacCenters = [], isLoading: evacLoading } = useOpenEvacuationCenters();
+
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<Overlay | null>(null);
   const userLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const routeLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const hazardLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const evacLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
 
-  // Default center (Cebu City, Philippines) - [lng, lat] for OpenLayers
-  const defaultCenter: [number, number] = [123.8854, 10.3157];
+  // Default center (Naval, Biliran, Philippines) - [lng, lat] for OpenLayers
+  const defaultCenter: [number, number] = [124.3989, 11.5669];
 
   // Initialize map
   useEffect(() => {
@@ -97,29 +92,6 @@ const SafetyMap = () => {
     const userSource = new VectorSource();
     const routeSource = new VectorSource();
 
-    // Add hazard features
-    hazards.forEach((hazard) => {
-      const feature = new Feature({
-        geometry: new Point(fromLonLat([hazard.lng, hazard.lat])),
-        name: hazard.name,
-        type: hazard.type,
-        featureType: 'hazard',
-      });
-      feature.setStyle(hazardStyle);
-      hazardSource.addFeature(feature);
-    });
-
-    // Add evacuation center features
-    evacCenters.forEach((center) => {
-      const feature = new Feature({
-        geometry: new Point(fromLonLat([center.lng, center.lat])),
-        name: center.name,
-        featureType: 'evac',
-      });
-      feature.setStyle(evacStyle);
-      evacSource.addFeature(feature);
-    });
-
     // Create layers
     const hazardLayer = new VectorLayer({ source: hazardSource });
     const evacLayer = new VectorLayer({ source: evacSource });
@@ -128,6 +100,8 @@ const SafetyMap = () => {
 
     userLayerRef.current = userLayer;
     routeLayerRef.current = routeLayer;
+    hazardLayerRef.current = hazardLayer;
+    evacLayerRef.current = evacLayer;
 
     // Create popup overlay
     const overlay = new Overlay({
@@ -161,13 +135,26 @@ const SafetyMap = () => {
         const name = feature.get('name');
         const featureType = feature.get('featureType');
         const type = feature.get('type');
+        const severity = feature.get('severity');
+        const status = feature.get('status');
+        const location = feature.get('location');
 
         if (popupRef.current) {
           let content = '';
           if (featureType === 'hazard') {
-            content = `<div class="text-center p-2"><span class="text-lg">⚠️</span><br/><strong class="text-red-600">${name}</strong><p class="text-xs capitalize">${type}</p></div>`;
+            content = `<div class="text-center p-2">
+              <span class="text-lg">⚠️</span><br/>
+              <strong class="text-red-600">${type}</strong>
+              <p class="text-xs capitalize">Severity: ${severity}</p>
+              <p class="text-xs">${location}</p>
+            </div>`;
           } else if (featureType === 'evac') {
-            content = `<div class="text-center p-2"><span class="text-lg">🏢</span><br/><strong class="text-green-600">${name}</strong><p class="text-xs">Evacuation Center</p></div>`;
+            content = `<div class="text-center p-2">
+              <span class="text-lg">🏢</span><br/>
+              <strong class="text-green-600">${name}</strong>
+              <p class="text-xs">Status: ${status}</p>
+              <p class="text-xs">${location}</p>
+            </div>`;
           } else if (featureType === 'user') {
             content = `<div class="text-center p-2"><strong>📍 Your Location</strong></div>`;
           }
@@ -193,6 +180,55 @@ const SafetyMap = () => {
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Update hazard markers when data changes
+  useEffect(() => {
+    if (!hazardLayerRef.current) return;
+
+    const source = hazardLayerRef.current.getSource();
+    if (!source) return;
+
+    source.clear();
+
+    hazards.forEach((hazard) => {
+      if (hazard.latitude && hazard.longitude) {
+        const feature = new Feature({
+          geometry: new Point(fromLonLat([hazard.longitude, hazard.latitude])),
+          name: hazard.type,
+          type: hazard.type,
+          severity: hazard.severity,
+          location: hazard.location,
+          featureType: 'hazard',
+        });
+        feature.setStyle(hazardStyle);
+        source.addFeature(feature);
+      }
+    });
+  }, [hazards]);
+
+  // Update evacuation center markers when data changes
+  useEffect(() => {
+    if (!evacLayerRef.current) return;
+
+    const source = evacLayerRef.current.getSource();
+    if (!source) return;
+
+    source.clear();
+
+    evacCenters.forEach((center) => {
+      if (center.latitude && center.longitude) {
+        const feature = new Feature({
+          geometry: new Point(fromLonLat([center.longitude, center.latitude])),
+          name: center.name,
+          status: center.status,
+          location: center.location,
+          featureType: 'evac',
+        });
+        feature.setStyle(evacStyle);
+        source.addFeature(feature);
+      }
+    });
+  }, [evacCenters]);
 
   // Update user location marker
   useEffect(() => {
@@ -284,23 +320,24 @@ const SafetyMap = () => {
     }
 
     // Simulate route generation
-    const start: [number, number] = userLocation || [10.3157, 123.8854];
-    const end: [number, number] = [10.325, 123.905];
+    const start: [number, number] = userLocation || [11.5669, 124.3989];
+    const end: [number, number] = [11.575, 124.405];
 
     const generatedRoute: [number, number][] = [
       start,
-      [start[0] + 0.005, start[1] + 0.005],
-      [start[0] + 0.008, start[1] + 0.012],
+      [start[0] + 0.003, start[1] + 0.003],
+      [start[0] + 0.006, start[1] + 0.008],
       end,
     ];
 
     setRoute(generatedRoute);
 
-    // Check if route passes through hazard zones
+    // Check if route passes through hazard zones using real data
     const hasHazardOnRoute = hazards.some((hazard) => {
+      if (!hazard.latitude || !hazard.longitude) return false;
       return generatedRoute.some((point) => {
         const distance = Math.sqrt(
-          Math.pow(hazard.lat - point[0], 2) + Math.pow(hazard.lng - point[1], 2)
+          Math.pow(hazard.latitude! - point[0], 2) + Math.pow(hazard.longitude! - point[1], 2)
         );
         return distance < 0.01;
       });
@@ -319,6 +356,8 @@ const SafetyMap = () => {
       });
     }
   };
+
+  const isLoading = hazardsLoading || evacLoading;
 
   return (
     <div className="flex flex-col h-full min-h-[600px]">
@@ -379,12 +418,18 @@ const SafetyMap = () => {
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full bg-red-600" />
-          <span>Hazards</span>
+          <span>Hazards ({hazards.length})</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-full bg-green-600" />
-          <span>Evac Centers</span>
+          <span>Evac Centers ({evacCenters.length})</span>
         </div>
+        {isLoading && (
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span>Loading...</span>
+          </div>
+        )}
       </div>
 
       {/* Map Container */}
