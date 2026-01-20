@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Camera, MapPin, Send } from 'lucide-react';
+import { AlertTriangle, Camera, MapPin, Send, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,13 +8,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCreateHazardReport } from '@/hooks/useHazardReports';
 
 const ReportHazard = () => {
   const [hazardType, setHazardType] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const { t } = useLanguage();
   const { toast } = useToast();
+  const createReport = useCreateHazardReport();
 
   const hazardTypes = [
     { value: 'flood', label: 'Flood / Rising Water' },
@@ -26,15 +30,45 @@ const ReportHazard = () => {
     { value: 'other', label: 'Other Hazard' },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: t.success,
-      description: 'Hazard report submitted successfully. Thank you for helping keep our community safe!',
-    });
-    setHazardType('');
-    setDescription('');
-    setLocation('');
+    
+    if (!hazardType || !location) {
+      toast({
+        title: t.error,
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await createReport.mutateAsync({
+        hazard_type: hazardType,
+        description,
+        location,
+        latitude,
+        longitude,
+      });
+
+      toast({
+        title: t.success,
+        description: 'Hazard report submitted successfully. Thank you for helping keep our community safe!',
+      });
+      
+      // Reset form
+      setHazardType('');
+      setDescription('');
+      setLocation('');
+      setLatitude(null);
+      setLongitude(null);
+    } catch (error) {
+      toast({
+        title: t.error,
+        description: 'Failed to submit report. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleUseLocation = () => {
@@ -42,6 +76,8 @@ const ReportHazard = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
+          setLatitude(latitude);
+          setLongitude(longitude);
           setLocation(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
           toast({
             title: t.success,
@@ -79,7 +115,7 @@ const ReportHazard = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>{t.hazardType}</Label>
-              <Select value={hazardType} onValueChange={setHazardType}>
+              <Select value={hazardType} onValueChange={setHazardType} disabled={createReport.isPending}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select hazard type" />
                 </SelectTrigger>
@@ -101,8 +137,9 @@ const ReportHazard = () => {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   className="flex-1"
+                  disabled={createReport.isPending}
                 />
-                <Button type="button" variant="outline" onClick={handleUseLocation}>
+                <Button type="button" variant="outline" onClick={handleUseLocation} disabled={createReport.isPending}>
                   <MapPin className="w-4 h-4" />
                 </Button>
               </div>
@@ -115,6 +152,7 @@ const ReportHazard = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
+                disabled={createReport.isPending}
               />
             </div>
 
@@ -126,9 +164,18 @@ const ReportHazard = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              <Send className="w-4 h-4 mr-2" />
-              {t.submit} Report
+            <Button type="submit" className="w-full" size="lg" disabled={createReport.isPending}>
+              {createReport.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  {t.submit} Report
+                </>
+              )}
             </Button>
           </form>
         </CardContent>

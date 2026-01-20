@@ -1,28 +1,57 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import LanguageToggle from './LanguageToggle';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
+  const { user, isAdmin, signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleAdminSignIn = (e: React.FormEvent) => {
+  // Redirect if already logged in as admin
+  useEffect(() => {
+    if (user && isAdmin) {
+      navigate('/admin/dashboard');
+    } else if (user && !isAdmin) {
+      navigate('/dashboard');
+    }
+  }, [user, isAdmin, navigate]);
+
+  const handleAdminSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: t.success,
-      description: 'Welcome to Admin Command Center!',
-    });
-    navigate('/admin/dashboard');
+    setIsLoading(true);
+
+    try {
+      const { error } = await signIn(email, password);
+
+      if (error) {
+        toast({
+          title: 'Sign In Failed',
+          description: 'Invalid credentials. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // The redirect will happen via useEffect when isAdmin is updated
+      toast({
+        title: t.success,
+        description: 'Welcome to Admin Command Center!',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -32,6 +61,7 @@ const AdminLogin = () => {
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          disabled={isLoading}
         >
           <ArrowLeft className="w-4 h-4" />
           Back to User Login
@@ -69,6 +99,7 @@ const AdminLogin = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="border-destructive/30 focus:border-destructive"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -82,14 +113,23 @@ const AdminLogin = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="border-destructive/30 focus:border-destructive"
+                  disabled={isLoading}
                 />
               </div>
 
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-semibold bg-destructive hover:bg-destructive/90"
+                disabled={isLoading}
               >
-                Access Command Center
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  'Access Command Center'
+                )}
               </Button>
             </form>
 
