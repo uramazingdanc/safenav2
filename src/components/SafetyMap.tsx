@@ -1,7 +1,4 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,32 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 
-// Fix default marker icons
-const defaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-L.Marker.prototype.options.icon = defaultIcon;
-
-// Custom marker icons
-const createIcon = (color: string) => {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
-};
-
-const userIcon = createIcon('#2563eb');
-const hazardIcon = createIcon('#dc2626');
-const evacIcon = createIcon('#16a34a');
+// OpenLayers imports
+import Map from 'ol/Map';
+import View from 'ol/View';
+import TileLayer from 'ol/layer/Tile';
+import VectorLayer from 'ol/layer/Vector';
+import VectorSource from 'ol/source/Vector';
+import OSM from 'ol/source/OSM';
+import { fromLonLat, toLonLat } from 'ol/proj';
+import Feature from 'ol/Feature';
+import Point from 'ol/geom/Point';
+import LineString from 'ol/geom/LineString';
+import { Style, Circle, Fill, Stroke } from 'ol/style';
+import Overlay from 'ol/Overlay';
+import 'ol/ol.css';
 
 // Sample hazards data
 const hazards = [
@@ -50,16 +35,38 @@ const evacCenters = [
   { id: 2, lat: 10.325, lng: 123.895, name: 'School Gymnasium' },
 ];
 
-// Component to recenter map
-const RecenterMap = ({ position }: { position: [number, number] | null }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (position) {
-      map.setView(position, 14);
-    }
-  }, [position, map]);
-  return null;
-};
+// Marker styles
+const userStyle = new Style({
+  image: new Circle({
+    radius: 10,
+    fill: new Fill({ color: '#2563eb' }),
+    stroke: new Stroke({ color: '#ffffff', width: 3 }),
+  }),
+});
+
+const hazardStyle = new Style({
+  image: new Circle({
+    radius: 10,
+    fill: new Fill({ color: '#dc2626' }),
+    stroke: new Stroke({ color: '#ffffff', width: 3 }),
+  }),
+});
+
+const evacStyle = new Style({
+  image: new Circle({
+    radius: 10,
+    fill: new Fill({ color: '#16a34a' }),
+    stroke: new Stroke({ color: '#ffffff', width: 3 }),
+  }),
+});
+
+const routeStyle = new Style({
+  stroke: new Stroke({
+    color: '#2563eb',
+    width: 4,
+    lineDash: [10, 10],
+  }),
+});
 
 const SafetyMap = () => {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -70,8 +77,168 @@ const SafetyMap = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  // Default center (Cebu City, Philippines)
-  const defaultCenter: [number, number] = [10.3157, 123.8854];
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<Map | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<Overlay | null>(null);
+  const userLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const routeLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+
+  // Default center (Cebu City, Philippines) - [lng, lat] for OpenLayers
+  const defaultCenter: [number, number] = [123.8854, 10.3157];
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return;
+
+    // Create vector sources
+    const hazardSource = new VectorSource();
+    const evacSource = new VectorSource();
+    const userSource = new VectorSource();
+    const routeSource = new VectorSource();
+
+    // Add hazard features
+    hazards.forEach((hazard) => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([hazard.lng, hazard.lat])),
+        name: hazard.name,
+        type: hazard.type,
+        featureType: 'hazard',
+      });
+      feature.setStyle(hazardStyle);
+      hazardSource.addFeature(feature);
+    });
+
+    // Add evacuation center features
+    evacCenters.forEach((center) => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([center.lng, center.lat])),
+        name: center.name,
+        featureType: 'evac',
+      });
+      feature.setStyle(evacStyle);
+      evacSource.addFeature(feature);
+    });
+
+    // Create layers
+    const hazardLayer = new VectorLayer({ source: hazardSource });
+    const evacLayer = new VectorLayer({ source: evacSource });
+    const userLayer = new VectorLayer({ source: userSource });
+    const routeLayer = new VectorLayer({ source: routeSource });
+
+    userLayerRef.current = userLayer;
+    routeLayerRef.current = routeLayer;
+
+    // Create popup overlay
+    const overlay = new Overlay({
+      element: popupRef.current!,
+      autoPan: true,
+    });
+    overlayRef.current = overlay;
+
+    // Create map
+    const map = new Map({
+      target: mapRef.current,
+      layers: [
+        new TileLayer({ source: new OSM() }),
+        routeLayer,
+        hazardLayer,
+        evacLayer,
+        userLayer,
+      ],
+      view: new View({
+        center: fromLonLat(defaultCenter),
+        zoom: 13,
+      }),
+      overlays: [overlay],
+    });
+
+    // Click handler for popups
+    map.on('click', (evt) => {
+      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
+      if (feature) {
+        const coordinates = (feature.getGeometry() as Point).getCoordinates();
+        const name = feature.get('name');
+        const featureType = feature.get('featureType');
+        const type = feature.get('type');
+
+        if (popupRef.current) {
+          let content = '';
+          if (featureType === 'hazard') {
+            content = `<div class="text-center p-2"><span class="text-lg">⚠️</span><br/><strong class="text-red-600">${name}</strong><p class="text-xs capitalize">${type}</p></div>`;
+          } else if (featureType === 'evac') {
+            content = `<div class="text-center p-2"><span class="text-lg">🏢</span><br/><strong class="text-green-600">${name}</strong><p class="text-xs">Evacuation Center</p></div>`;
+          } else if (featureType === 'user') {
+            content = `<div class="text-center p-2"><strong>📍 Your Location</strong></div>`;
+          }
+          popupRef.current.innerHTML = content;
+          overlay.setPosition(coordinates);
+        }
+      } else {
+        overlay.setPosition(undefined);
+      }
+    });
+
+    // Change cursor on hover
+    map.on('pointermove', (evt) => {
+      const pixel = map.getEventPixel(evt.originalEvent);
+      const hit = map.hasFeatureAtPixel(pixel);
+      map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+    });
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.setTarget(undefined);
+      mapInstanceRef.current = null;
+    };
+  }, []);
+
+  // Update user location marker
+  useEffect(() => {
+    if (!userLayerRef.current || !mapInstanceRef.current) return;
+
+    const source = userLayerRef.current.getSource();
+    if (!source) return;
+
+    source.clear();
+
+    if (userLocation) {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([userLocation[1], userLocation[0]])),
+        name: 'Your Location',
+        featureType: 'user',
+      });
+      feature.setStyle(userStyle);
+      source.addFeature(feature);
+
+      // Center map on user location
+      mapInstanceRef.current.getView().animate({
+        center: fromLonLat([userLocation[1], userLocation[0]]),
+        zoom: 14,
+        duration: 500,
+      });
+    }
+  }, [userLocation]);
+
+  // Update route
+  useEffect(() => {
+    if (!routeLayerRef.current) return;
+
+    const source = routeLayerRef.current.getSource();
+    if (!source) return;
+
+    source.clear();
+
+    if (route) {
+      const coordinates = route.map(([lat, lng]) => fromLonLat([lng, lat]));
+      const feature = new Feature({
+        geometry: new LineString(coordinates),
+      });
+      feature.setStyle(routeStyle);
+      source.addFeature(feature);
+    }
+  }, [route]);
 
   const handleUseLocation = () => {
     setIsLoadingLocation(true);
@@ -117,10 +284,9 @@ const SafetyMap = () => {
     }
 
     // Simulate route generation
-    const start = userLocation || defaultCenter;
-    const end: [number, number] = [10.325, 123.905]; // Simulated destination
+    const start: [number, number] = userLocation || [10.3157, 123.8854];
+    const end: [number, number] = [10.325, 123.905];
 
-    // Create a simple route
     const generatedRoute: [number, number][] = [
       start,
       [start[0] + 0.005, start[1] + 0.005],
@@ -222,67 +388,13 @@ const SafetyMap = () => {
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden shadow-lg border min-h-[350px]">
-        <MapContainer
-          center={defaultCenter}
-          zoom={13}
-          scrollWheelZoom={true}
-          style={{ height: '100%', width: '100%', minHeight: '350px' }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          
-          <RecenterMap position={userLocation} />
-
-          {/* User Location Marker */}
-          {userLocation && (
-            <Marker position={userLocation} icon={userIcon}>
-              <Popup>
-                <div className="text-center">
-                  <strong>📍 Your Location</strong>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-
-          {/* Hazard Markers */}
-          {hazards.map((hazard) => (
-            <Marker key={hazard.id} position={[hazard.lat, hazard.lng]} icon={hazardIcon}>
-              <Popup>
-                <div className="text-center">
-                  <span className="text-red-600 text-lg">⚠️</span>
-                  <br />
-                  <strong className="text-red-600">{hazard.name}</strong>
-                  <p className="text-xs capitalize">{hazard.type}</p>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-
-          {/* Evacuation Center Markers */}
-          {evacCenters.map((center) => (
-            <Marker key={center.id} position={[center.lat, center.lng]} icon={evacIcon}>
-              <Popup>
-                <div className="text-center">
-                  <span className="text-green-600 text-lg">🏢</span>
-                  <br />
-                  <strong className="text-green-600">{center.name}</strong>
-                  <p className="text-xs">Evacuation Center</p>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-
-          {/* Route Polyline */}
-          {route && (
-            <Polyline
-              positions={route}
-              pathOptions={{ color: '#2563eb', weight: 4, dashArray: '10, 10' }}
-            />
-          )}
-        </MapContainer>
+      <div className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden shadow-lg border min-h-[350px] relative">
+        <div ref={mapRef} className="w-full h-full min-h-[350px]" />
+        <div 
+          ref={popupRef} 
+          className="ol-popup bg-white rounded-lg shadow-lg border"
+          style={{ position: 'absolute', minWidth: '120px' }}
+        />
       </div>
     </div>
   );
