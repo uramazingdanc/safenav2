@@ -1,42 +1,55 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Shield, HelpCircle, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import LanguageToggle from './LanguageToggle';
-import TermsModal from './TermsModal';
-import VideoManualModal from './VideoManualModal';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Shield, HelpCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import LanguageToggle from "./LanguageToggle";
+import TermsModal from "./TermsModal";
+import VideoManualModal from "./VideoManualModal";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const barangays = [
-  'Adlaon', 'Agsungot', 'Apas', 'Babag', 'Bacayan', 'Banilad', 'Basak Pardo',
-  'Basak San Nicolas', 'Bonbon', 'Budlaan', 'Buhisan', 'Bulacao', 'Busay',
-  'Calamba', 'Cambinocot', 'Capitol Site', 'Carreta', 'Central', 'Cogon Pardo',
-  'Cogon Ramos', 'Day-as', 'Duljo-Fatima', 'Ermita', 'Guadalupe', 'Guba',
-  'Hippodromo', 'Inayawan', 'Kalubihan', 'Kalunasan', 'Kamagayan', 'Kamputhaw',
-  'Kasambagan', 'Kinasang-an', 'Labangon', 'Lahug', 'Lorega', 'Lusaran',
-  'Luz', 'Mabini', 'Mabolo', 'Malubog', 'Mambaling', 'Pahina Central',
-  'Pahina San Nicolas', 'Pamutan', 'Pardo', 'Pari-an', 'Paril', 'Pasil',
-  'Pit-os', 'Poblacion Pardo', 'Pulangbato', 'Pung-ol-Sibugay', 'Punta Princesa',
-  'Quiot', 'Sambag I', 'Sambag II', 'San Antonio', 'San Jose', 'San Nicolas Central',
-  'San Roque', 'Santa Cruz', 'Sawang Calero', 'Sinsin', 'Sirao', 'Suba',
-  'Sudlon I', 'Sudlon II', 'T. Padilla', 'Tabunan', 'Tagbao', 'Talamban',
-  'Taptap', 'Tejero', 'Tinago', 'Tisa', 'To-ong', 'Zapatera'
+  "Agpangi",
+  "Anislagan",
+  "Atipolo",
+  "Calumpang",
+  "Capiñahan",
+  "Caraycaray",
+  "Catmon",
+  "Haguikhikan",
+  "Padre Inocentes García (Pob.)",
+  "Libertad",
+  "Lico",
+  "Lucsoon",
+  "Mabini",
+  "San Pablo",
+  "Santo Niño",
+  "Santissimo Rosario Pob.",
+  "Talustusan",
+  "Villa Caneja",
+  "Villa Consuelo",
+  "Borac",
+  "Cabungaan",
+  "Imelda",
+  "Larrazabal",
+  "Libtong",
+  "Padre Sergio Eamiguel",
+  "Sabang",
 ];
 
 const LoginScreen = () => {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [barangay, setBarangay] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [barangay, setBarangay] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
@@ -49,27 +62,27 @@ const LoginScreen = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!termsAccepted && !isSignUp) {
       toast({
-        title: 'Terms Required',
-        description: 'Please accept the Terms and Conditions to continue.',
-        variant: 'destructive',
+        title: "Terms Required",
+        description: "Please accept the Terms and Conditions to continue.",
+        variant: "destructive",
       });
       return;
     }
 
     if (isSignUp && (!fullName || !phoneNumber || !barangay)) {
       toast({
-        title: 'Required Fields',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
+        title: "Required Fields",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
       });
       return;
     }
@@ -81,48 +94,48 @@ const LoginScreen = () => {
         const { error } = await signUp(email, password, {
           full_name: fullName,
           phone_number: phoneNumber,
-          barangay: barangay
+          barangay: barangay,
         });
 
         if (error) {
           let message = error.message;
-          if (error.message.includes('already registered')) {
-            message = 'This email is already registered. Please sign in instead.';
+          if (error.message.includes("already registered")) {
+            message = "This email is already registered. Please sign in instead.";
           }
           toast({
-            title: 'Sign Up Failed',
+            title: "Sign Up Failed",
             description: message,
-            variant: 'destructive',
+            variant: "destructive",
           });
           return;
         }
 
         toast({
           title: t.success,
-          description: 'Account created successfully! Welcome to SafeNav.',
+          description: "Account created successfully! Welcome to SafeNav.",
         });
-        navigate('/dashboard');
+        navigate("/dashboard");
       } else {
         const { error } = await signIn(email, password);
 
         if (error) {
           let message = error.message;
-          if (error.message.includes('Invalid login credentials')) {
-            message = 'Invalid email or password. Please try again.';
+          if (error.message.includes("Invalid login credentials")) {
+            message = "Invalid email or password. Please try again.";
           }
           toast({
-            title: 'Sign In Failed',
+            title: "Sign In Failed",
             description: message,
-            variant: 'destructive',
+            variant: "destructive",
           });
           return;
         }
 
         toast({
           title: t.success,
-          description: 'Welcome back to SafeNav!',
+          description: "Welcome back to SafeNav!",
         });
-        navigate('/dashboard');
+        navigate("/dashboard");
       }
     } finally {
       setIsLoading(false);
@@ -145,12 +158,8 @@ const LoginScreen = () => {
                 <Shield className="w-10 h-10 text-primary-foreground" />
               </div>
             )}
-            <h1 className="text-2xl font-bold text-primary">
-              {isSignUp ? t.createAccount : 'SafeNav'}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {isSignUp ? 'Join SafeNav Emergency Guardian' : t.welcomeBack}
-            </p>
+            <h1 className="text-2xl font-bold text-primary">{isSignUp ? t.createAccount : "SafeNav"}</h1>
+            <p className="text-muted-foreground mt-1">{isSignUp ? "Join SafeNav Emergency Guardian" : t.welcomeBack}</p>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -235,10 +244,7 @@ const LoginScreen = () => {
 
               {!isSignUp && (
                 <div className="text-right">
-                  <button
-                    type="button"
-                    className="text-sm text-primary hover:underline"
-                  >
+                  <button type="button" className="text-sm text-primary hover:underline">
                     {t.forgotPassword}
                   </button>
                 </div>
@@ -247,7 +253,7 @@ const LoginScreen = () => {
               {/* Terms - Only show checkbox for login, text for signup */}
               {isSignUp ? (
                 <p className="text-sm text-center text-muted-foreground">
-                  By signing up, you agree to our{' '}
+                  By signing up, you agree to our{" "}
                   <button
                     type="button"
                     onClick={() => setShowTerms(true)}
@@ -266,7 +272,7 @@ const LoginScreen = () => {
                   />
                   <div className="text-sm leading-none">
                     <label htmlFor="terms" className="cursor-pointer">
-                      {t.termsAgree}{' '}
+                      {t.termsAgree}{" "}
                       <button
                         type="button"
                         onClick={() => setShowTerms(true)}
@@ -287,10 +293,12 @@ const LoginScreen = () => {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                    {isSignUp ? "Creating Account..." : "Signing In..."}
                   </>
+                ) : isSignUp ? (
+                  t.signUp
                 ) : (
-                  isSignUp ? t.signUp : t.signIn
+                  t.signIn
                 )}
               </Button>
             </form>
@@ -298,7 +306,7 @@ const LoginScreen = () => {
             {/* Toggle between Login and Signup */}
             <div className="text-center pt-2">
               <p className="text-sm text-muted-foreground">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
                 <button
                   type="button"
                   onClick={() => {
@@ -328,7 +336,7 @@ const LoginScreen = () => {
             <div className="text-center pt-2 border-t">
               <button
                 type="button"
-                onClick={() => navigate('/admin/login')}
+                onClick={() => navigate("/admin/login")}
                 className="text-sm text-muted-foreground hover:text-destructive transition-colors"
                 disabled={isLoading}
               >
