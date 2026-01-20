@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveHazards } from '@/hooks/useHazards';
 import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
+import WeatherCard from '@/components/WeatherCard';
 
 // OpenLayers imports
 import Map from 'ol/Map';
@@ -361,6 +362,11 @@ const SafetyMap = () => {
 
   return (
     <div className="flex flex-col h-full min-h-[600px]">
+      {/* Weather Card */}
+      <div className="mx-4 mt-4">
+        <WeatherCard />
+      </div>
+
       {/* Route Planning Card */}
       <Card className="m-4 shadow-lg animate-fade-in">
         <CardHeader className="pb-3">
