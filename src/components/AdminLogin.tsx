@@ -24,9 +24,8 @@ const AdminLogin = () => {
   useEffect(() => {
     if (user && isAdmin) {
       navigate('/admin/dashboard');
-    } else if (user && !isAdmin) {
-      navigate('/dashboard');
     }
+    // Don't redirect non-admin users from this page - let them try to login
   }, [user, isAdmin, navigate]);
 
   const handleAdminSignIn = async (e: React.FormEvent) => {
@@ -53,14 +52,22 @@ const AdminLogin = () => {
           description: 'Invalid credentials. Please try again.',
           variant: 'destructive',
         });
+        setIsLoading(false);
         return;
       }
 
+      // Force redirect to admin dashboard for admin email
       toast({
         title: t.success,
         description: 'Welcome to SafeNav Command Center!',
       });
-    } finally {
+      
+      // Small delay to allow auth state to settle, then redirect
+      setTimeout(() => {
+        navigate('/admin/dashboard');
+        setIsLoading(false);
+      }, 500);
+    } catch {
       setIsLoading(false);
     }
   };
