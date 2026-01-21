@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, Loader2 } from 'lucide-react';
+import { Shield, ArrowLeft, Loader2, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import LanguageToggle from './LanguageToggle';
+import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+
+const ADMIN_EMAIL = 'admin@safenav.naval';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-  const { user, isAdmin, signIn } = useAuth();
+  const { user, isAdmin, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -30,6 +31,17 @@ const AdminLogin = () => {
 
   const handleAdminSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate admin email
+    if (email.toLowerCase() !== ADMIN_EMAIL) {
+      toast({
+        title: 'Access Denied',
+        description: 'Only authorized admin accounts can access this portal.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -44,10 +56,9 @@ const AdminLogin = () => {
         return;
       }
 
-      // The redirect will happen via useEffect when isAdmin is updated
       toast({
         title: t.success,
-        description: 'Welcome to Admin Command Center!',
+        description: 'Welcome to SafeNav Command Center!',
       });
     } finally {
       setIsLoading(false);
@@ -55,56 +66,61 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-destructive/10 to-destructive/5 flex flex-col admin-theme">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#C62828' }}>
+      {/* Back Button */}
+      <div className="p-4">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
           disabled={isLoading}
         >
           <ArrowLeft className="w-4 h-4" />
           Back to User Login
         </button>
-        <LanguageToggle />
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-4 pb-8">
-        <Card className="w-full max-w-md animate-fade-in shadow-xl border-destructive/20">
-          <CardHeader className="text-center pb-2">
-            <div className="w-20 h-20 bg-destructive rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <ShieldAlert className="w-10 h-10 text-destructive-foreground" />
-            </div>
-            <h1 className="text-2xl font-bold text-destructive">{t.adminAccess}</h1>
-            <p className="text-muted-foreground mt-1">Command Center Portal</p>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm text-destructive">
-              <strong>⚠️ Authorized Personnel Only</strong>
-              <p className="mt-1 text-muted-foreground">
-                This portal is for emergency management administrators only.
-              </p>
+        <Card className="w-full max-w-md animate-fade-in shadow-2xl border-0">
+          <CardContent className="p-8">
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                <div className="w-20 h-20 bg-[#0D253F] rounded-2xl flex items-center justify-center shadow-lg">
+                  <Shield className="w-10 h-10 text-white" />
+                  <Compass className="w-5 h-5 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                </div>
+              </div>
             </div>
 
-            <form onSubmit={handleAdminSignIn} className="space-y-4">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-[#0D253F]">{t.adminAccess}</h1>
+              <p className="text-muted-foreground mt-1">SafeNav Emergency Guardian</p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAdminSignIn} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="admin-email">{t.email}</Label>
+                <Label htmlFor="admin-email" className="text-[#0D253F] font-medium">
+                  Username
+                </Label>
                 <Input
                   id="admin-email"
                   type="email"
-                  placeholder="admin@safenav.gov"
+                  placeholder="admin@safenav.naval"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="border-destructive/30 focus:border-destructive"
+                  className="h-12 border-gray-300 focus:border-[#C62828] focus:ring-[#C62828]"
                   disabled={isLoading}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="admin-password">{t.password}</Label>
+                <Label htmlFor="admin-password" className="text-[#0D253F] font-medium">
+                  Password
+                </Label>
                 <Input
                   id="admin-password"
                   type="password"
@@ -112,14 +128,15 @@ const AdminLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="border-destructive/30 focus:border-destructive"
+                  className="h-12 border-gray-300 focus:border-[#C62828] focus:ring-[#C62828]"
                   disabled={isLoading}
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full h-12 text-base font-semibold bg-destructive hover:bg-destructive/90"
+                className="w-full h-12 text-base font-semibold text-white"
+                style={{ backgroundColor: '#C62828' }}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -128,13 +145,16 @@ const AdminLogin = () => {
                     Signing In...
                   </>
                 ) : (
-                  'Access Command Center'
+                  'Admin Sign In'
                 )}
               </Button>
             </form>
 
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Having trouble? Contact your system administrator.</p>
+            {/* Footer */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Authorized personnel only. Unauthorized access is prohibited.
+              </p>
             </div>
           </CardContent>
         </Card>
