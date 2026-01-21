@@ -8,6 +8,7 @@ import { useAdminStats } from '@/hooks/useAdminStats';
 import { usePendingReports, useUpdateHazardReport } from '@/hooks/useHazardReports';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import HazardModal from './admin/HazardModal';
 
 const AdminDashboard = () => {
   const { t } = useLanguage();
@@ -17,6 +18,7 @@ const AdminDashboard = () => {
   const { data: pendingReports, isLoading: reportsLoading } = usePendingReports();
   const updateReport = useUpdateHazardReport();
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isHazardModalOpen, setIsHazardModalOpen] = useState(false);
 
   const handleVerify = async (reportId: string) => {
     setProcessingId(reportId);
@@ -75,8 +77,8 @@ const AdminDashboard = () => {
       label: 'Evac Centers', 
       value: statsLoading ? '...' : stats?.totalEvacCenters?.toString() || '0', 
       icon: Building2, 
-      color: 'text-green-400',
-      bgColor: 'bg-green-500/10'
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10'
     },
   ];
 
@@ -106,8 +108,8 @@ const AdminDashboard = () => {
         <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-4">
           <Button 
-            className="h-auto py-6 bg-green-600 hover:bg-green-700 text-white border-0"
-            onClick={() => navigate('/admin/hazards')}
+            className="h-auto py-6 bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+            onClick={() => setIsHazardModalOpen(true)}
           >
             <div className="flex flex-col items-center gap-2">
               <Plus className="w-6 h-6" />
@@ -126,7 +128,7 @@ const AdminDashboard = () => {
           <Button 
             variant="outline"
             className="h-auto py-6 bg-slate-700/50 hover:bg-slate-700 text-white border-slate-600"
-            onClick={() => navigate('/hotlines')}
+            onClick={() => navigate('/admin/hotlines')}
           >
             <div className="flex flex-col items-center gap-2">
               <Phone className="w-6 h-6" />
@@ -136,7 +138,7 @@ const AdminDashboard = () => {
           <Button 
             variant="outline"
             className="h-auto py-6 bg-slate-700/50 hover:bg-slate-700 text-white border-slate-600"
-            onClick={() => navigate('/map')}
+            onClick={() => navigate('/admin/map')}
           >
             <div className="flex flex-col items-center gap-2">
               <Map className="w-6 h-6" />
@@ -202,7 +204,7 @@ const AdminDashboard = () => {
                   <div className="flex gap-2 flex-shrink-0">
                     <Button 
                       size="sm" 
-                      className="bg-green-600 hover:bg-green-700 text-white h-9 w-9 p-0"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 w-9 p-0"
                       onClick={() => handleVerify(report.id)}
                       disabled={processingId === report.id}
                     >
@@ -214,8 +216,7 @@ const AdminDashboard = () => {
                     </Button>
                     <Button 
                       size="sm" 
-                      variant="destructive"
-                      className="h-9 w-9 p-0"
+                      className="bg-rose-600 hover:bg-rose-700 text-white h-9 w-9 p-0"
                       onClick={() => handleReject(report.id)}
                       disabled={processingId === report.id}
                     >
@@ -237,6 +238,12 @@ const AdminDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Hazard Modal */}
+      <HazardModal 
+        open={isHazardModalOpen} 
+        onClose={() => setIsHazardModalOpen(false)} 
+      />
     </div>
   );
 };

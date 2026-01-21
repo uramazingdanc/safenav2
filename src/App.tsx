@@ -26,6 +26,7 @@ import AdminHazards from "./pages/AdminHazards";
 import AdminEvacCenters from "./pages/AdminEvacCenters";
 import AdminUsers from "./pages/AdminUsers";
 import AdminReports from "./pages/AdminReports";
+import AdminMap from "./pages/AdminMap";
 
 import NotFound from "./pages/NotFound";
 
@@ -68,6 +69,8 @@ const App = () => (
                 <Route path="/admin/centers" element={<AdminEvacCenters />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/reports" element={<AdminReports />} />
+                <Route path="/admin/map" element={<AdminMap />} />
+                <Route path="/admin/hotlines" element={<EmergencyHotlines />} />
               </Route>
 
               {/* Catch-all */}
