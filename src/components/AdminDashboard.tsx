@@ -1,145 +1,242 @@
 import { useState } from 'react';
-import { Users, AlertTriangle, Building2, Plus, TrendingUp, Clock, MapPin, FileText, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, AlertTriangle, Building2, Plus, Phone, Map, Check, X, MapPin, Clock, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import VideoManualModal from './VideoManualModal';
+import { useAdminStats } from '@/hooks/useAdminStats';
+import { usePendingReports, useUpdateHazardReport } from '@/hooks/useHazardReports';
+import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 const AdminDashboard = () => {
   const { t } = useLanguage();
-  const [showGuide, setShowGuide] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: stats, isLoading: statsLoading } = useAdminStats();
+  const { data: pendingReports, isLoading: reportsLoading } = usePendingReports();
+  const updateReport = useUpdateHazardReport();
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const stats = [
-    { label: t.totalUsers, value: '12,458', icon: Users, change: '+12%', color: 'text-accent' },
-    { label: t.totalHazards, value: '47', icon: AlertTriangle, change: '+3', color: 'text-destructive' },
-    { label: 'Evac Centers', value: '23', icon: Building2, change: '0', color: 'text-success' },
-    { label: 'Active Alerts', value: '8', icon: Clock, change: '-2', color: 'text-warning' },
-  ];
+  const handleVerify = async (reportId: string) => {
+    setProcessingId(reportId);
+    try {
+      await updateReport.mutateAsync({ id: reportId, status: 'verified' });
+      toast({
+        title: 'Report Verified',
+        description: 'The hazard report has been verified and is now active.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to verify report. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
-  const recentReports = [
-    { id: 1, type: 'Flood', location: 'Brgy. San Nicolas', time: '10 min ago', status: 'pending' },
-    { id: 2, type: 'Road Block', location: 'Capitol Site', time: '25 min ago', status: 'verified' },
-    { id: 3, type: 'Landslide', location: 'Mountain View', time: '1 hour ago', status: 'resolved' },
-    { id: 4, type: 'Power Outage', location: 'Lahug', time: '2 hours ago', status: 'pending' },
+  const handleReject = async (reportId: string) => {
+    setProcessingId(reportId);
+    try {
+      await updateReport.mutateAsync({ id: reportId, status: 'rejected' });
+      toast({
+        title: 'Report Rejected',
+        description: 'The hazard report has been rejected.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reject report. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const statCards = [
+    { 
+      label: t.totalUsers, 
+      value: statsLoading ? '...' : stats?.totalUsers?.toString() || '0', 
+      icon: Users, 
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10'
+    },
+    { 
+      label: t.totalHazards, 
+      value: statsLoading ? '...' : stats?.totalHazards?.toString() || '0', 
+      icon: AlertTriangle, 
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-500/10'
+    },
+    { 
+      label: 'Evac Centers', 
+      value: statsLoading ? '...' : stats?.totalEvacCenters?.toString() || '0', 
+      icon: Building2, 
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10'
+    },
   ];
 
   return (
-    <div className="p-4 md:p-6 space-y-6 pb-20 md:pb-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{t.dashboard}</h1>
-          <p className="text-muted-foreground">Welcome back, Admin</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowGuide(true)}
-            className="hidden md:flex"
-          >
-            <BookOpen className="w-4 h-4 mr-2" />
-            {t.systemGuide}
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                <span className={`text-xs ${stat.change.startsWith('+') ? 'text-success' : stat.change.startsWith('-') ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {stat.change}
-                </span>
+    <div className="min-h-screen bg-[#0f172a] text-white p-4 md:p-6 space-y-6 pb-20 md:pb-6 animate-fade-in">
+      {/* Stats Grid - 3 Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {statCards.map((stat) => (
+          <Card key={stat.label} className="bg-slate-800/50 border-slate-700">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${stat.bgColor}`}>
+                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-white">{stat.value}</p>
+                  <p className="text-sm text-slate-400">{stat.label}</p>
+                </div>
               </div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-4">
-        <Button className="h-auto py-4 bg-success hover:bg-success/90">
-          <div className="flex flex-col items-center gap-2">
-            <Plus className="w-6 h-6" />
-            <span>{t.addHazard}</span>
-          </div>
-        </Button>
-        <Button className="h-auto py-4 bg-accent hover:bg-accent/90">
-          <div className="flex flex-col items-center gap-2">
-            <Building2 className="w-6 h-6" />
-            <span>{t.addEvacCenter}</span>
-          </div>
-        </Button>
+      {/* Quick Actions - 2x2 Grid */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <Button 
+            className="h-auto py-6 bg-green-600 hover:bg-green-700 text-white border-0"
+            onClick={() => navigate('/admin/hazards')}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Plus className="w-6 h-6" />
+              <span className="font-semibold">{t.addHazard}</span>
+            </div>
+          </Button>
+          <Button 
+            className="h-auto py-6 bg-blue-600 hover:bg-blue-700 text-white border-0"
+            onClick={() => navigate('/admin/centers')}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Building2 className="w-6 h-6" />
+              <span className="font-semibold">{t.addEvacCenter}</span>
+            </div>
+          </Button>
+          <Button 
+            variant="outline"
+            className="h-auto py-6 bg-slate-700/50 hover:bg-slate-700 text-white border-slate-600"
+            onClick={() => navigate('/hotlines')}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Phone className="w-6 h-6" />
+              <span className="font-semibold">Hotlines</span>
+            </div>
+          </Button>
+          <Button 
+            variant="outline"
+            className="h-auto py-6 bg-slate-700/50 hover:bg-slate-700 text-white border-slate-600"
+            onClick={() => navigate('/map')}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Map className="w-6 h-6" />
+              <span className="font-semibold">Live Map View</span>
+            </div>
+          </Button>
+        </div>
       </div>
 
-      {/* Recent Reports */}
-      <Card>
+      {/* Pending Hazard Reports */}
+      <Card className="bg-slate-800/50 border-slate-700">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Recent Reports
+            <CardTitle className="text-base flex items-center gap-2 text-white">
+              <AlertTriangle className="w-5 h-5 text-orange-400" />
+              Pending Hazard Reports
             </CardTitle>
-            <Button variant="ghost" size="sm">View All</Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-slate-400 hover:text-white"
+              onClick={() => navigate('/admin/reports')}
+            >
+              View All
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {recentReports.map((report) => (
-              <div
-                key={report.id}
-                className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg"
-              >
-                <div className={`w-2 h-2 rounded-full ${
-                  report.status === 'pending' ? 'bg-warning' :
-                  report.status === 'verified' ? 'bg-success' : 'bg-muted-foreground'
-                }`} />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{report.type}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      report.status === 'pending' ? 'bg-warning/20 text-warning' :
-                      report.status === 'verified' ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {report.status}
-                    </span>
+          {reportsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            </div>
+          ) : pendingReports && pendingReports.length > 0 ? (
+            <div className="space-y-3">
+              {pendingReports.slice(0, 5).map((report: any) => (
+                <div
+                  key={report.id}
+                  className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-lg border border-slate-700"
+                >
+                  <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-white">{report.hazard_type}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
+                        pending
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
+                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{report.location}</span>
+                      <span>•</span>
+                      <Clock className="w-3 h-3 flex-shrink-0" />
+                      <span className="flex-shrink-0">
+                        {formatDistanceToNow(new Date(report.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                    {report.profiles?.full_name && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Reported by: {report.profiles.full_name}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="w-3 h-3" />
-                    {report.location}
-                    <span>•</span>
-                    <Clock className="w-3 h-3" />
-                    {report.time}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button 
+                      size="sm" 
+                      className="bg-green-600 hover:bg-green-700 text-white h-9 w-9 p-0"
+                      onClick={() => handleVerify(report.id)}
+                      disabled={processingId === report.id}
+                    >
+                      {processingId === report.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="destructive"
+                      className="h-9 w-9 p-0"
+                      onClick={() => handleReject(report.id)}
+                      disabled={processingId === report.id}
+                    >
+                      {processingId === report.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <X className="w-4 h-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">Review</Button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-400">
+              <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p>No pending reports</p>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Activity Chart Placeholder */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Activity Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-48 flex items-center justify-center bg-secondary/30 rounded-lg">
-            <p className="text-muted-foreground">Activity chart will appear here</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <VideoManualModal open={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 };

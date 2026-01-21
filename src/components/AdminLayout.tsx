@@ -1,17 +1,22 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ShieldAlert, LayoutDashboard, AlertTriangle, Building2, Users, FileText, Settings, LogOut, BookOpen } from 'lucide-react';
+import { ShieldAlert, LayoutDashboard, AlertTriangle, Building2, Users, FileText, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import LanguageToggle from './LanguageToggle';
-import VideoManualModal from './VideoManualModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
 
 const AdminLayout = () => {
   const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
-  const [showGuide, setShowGuide] = useState(false);
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/admin/login');
+  };
 
   const navItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: t.dashboard },
@@ -22,17 +27,17 @@ const AdminLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen flex w-full bg-background admin-theme">
+    <div className="min-h-screen flex w-full bg-[#0f172a]">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-destructive text-destructive-foreground h-screen sticky top-0">
-        <div className="p-6 border-b border-destructive-foreground/20">
+      <aside className="hidden md:flex flex-col w-64 bg-[#0f172a] border-r border-slate-700 h-screen sticky top-0">
+        <div className="p-6 border-b border-slate-700">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-destructive-foreground/20 rounded-xl flex items-center justify-center">
-              <ShieldAlert className="w-5 h-5" />
+            <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
+              <ShieldAlert className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">SafeNav</h1>
-              <p className="text-xs text-destructive-foreground/70">Command Center</p>
+              <h1 className="font-bold text-lg text-white">SafeNav Admin</h1>
+              <p className="text-xs text-slate-400">Disaster Risk Management</p>
             </div>
           </div>
         </div>
@@ -47,8 +52,8 @@ const AdminLayout = () => {
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
                   isActive
-                    ? 'bg-destructive-foreground/20'
-                    : 'hover:bg-destructive-foreground/10 text-destructive-foreground/80'
+                    ? 'bg-slate-700 text-white'
+                    : 'hover:bg-slate-800 text-slate-400'
                 )}
               >
                 <item.icon className="w-5 h-5" />
@@ -58,20 +63,12 @@ const AdminLayout = () => {
           })}
         </nav>
 
-        <div className="p-4 border-t border-destructive-foreground/20 space-y-3">
-          <Button
-            variant="outline"
-            className="w-full justify-start border-destructive-foreground/30 text-destructive-foreground hover:bg-destructive-foreground/10"
-            onClick={() => setShowGuide(true)}
-          >
-            <BookOpen className="w-4 h-4 mr-2" />
-            {t.systemGuide}
-          </Button>
+        <div className="p-4 border-t border-slate-700 space-y-3">
           <LanguageToggle />
           <Button
             variant="ghost"
-            className="w-full justify-start text-destructive-foreground/70 hover:bg-destructive-foreground/10"
-            onClick={() => navigate('/admin/login')}
+            className="w-full justify-start text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            onClick={handleSignOut}
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sign Out
@@ -81,22 +78,60 @@ const AdminLayout = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
-        {/* Mobile Header */}
-        <header className="md:hidden flex items-center justify-between p-4 bg-destructive text-destructive-foreground">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-6 h-6" />
-            <span className="font-bold">Admin</span>
+        {/* Desktop Header */}
+        <header className="hidden md:flex items-center justify-between p-4 bg-[#0f172a] border-b border-slate-700">
+          <div>
+            <h1 className="font-bold text-xl text-white">SafeNav Admin</h1>
+            <p className="text-sm text-slate-400">Disaster Risk Management System</p>
           </div>
-          <LanguageToggle />
+          <div className="flex items-center gap-4">
+            <Badge className="bg-green-600 hover:bg-green-600 text-white px-3 py-1">
+              Admin
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+              onClick={handleSignOut}
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
+        </header>
+
+        {/* Mobile Header */}
+        <header className="md:hidden flex items-center justify-between p-4 bg-[#0f172a] border-b border-slate-700">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+              <ShieldAlert className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <span className="font-bold text-white">SafeNav Admin</span>
+              <p className="text-xs text-slate-400">Disaster Risk Management</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-green-600 hover:bg-green-600 text-white text-xs">
+              Admin
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-red-400 hover:bg-red-500/10 h-8 w-8"
+              onClick={handleSignOut}
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto bg-[#0f172a]">
           <Outlet />
         </div>
 
         {/* Mobile Bottom Nav */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t z-50">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1e293b] border-t border-slate-700 z-50">
           <div className="flex justify-around items-center h-16">
             {navItems.slice(0, 5).map((item) => {
               const isActive = location.pathname === item.path;
@@ -106,7 +141,7 @@ const AdminLayout = () => {
                   to={item.path}
                   className={cn(
                     'flex flex-col items-center justify-center flex-1 py-2',
-                    isActive ? 'text-destructive' : 'text-muted-foreground'
+                    isActive ? 'text-white' : 'text-slate-500'
                   )}
                 >
                   <item.icon className="w-5 h-5" />
@@ -117,8 +152,6 @@ const AdminLayout = () => {
           </div>
         </nav>
       </main>
-
-      <VideoManualModal open={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 };
