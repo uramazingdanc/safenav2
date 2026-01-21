@@ -8,15 +8,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-
-const ADMIN_EMAIL = 'admin@safenav.naval';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-  const { user, isAdmin, signIn, signUp } = useAuth();
+  const { user, isAdmin, signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -30,17 +29,6 @@ const AdminLogin = () => {
 
   const handleAdminSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate admin email
-    if (email.toLowerCase() !== ADMIN_EMAIL) {
-      toast({
-        title: 'Access Denied',
-        description: 'Only authorized admin accounts can access this portal.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -56,17 +44,37 @@ const AdminLogin = () => {
         return;
       }
 
-      // Force redirect to admin dashboard for admin email
-      toast({
-        title: t.success,
-        description: 'Welcome to SafeNav Command Center!',
-      });
+      // Check if the user has admin role
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      // Small delay to allow auth state to settle, then redirect
-      setTimeout(() => {
+      if (currentUser) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+
+        if (roleData?.role !== 'admin') {
+          // Sign out non-admin users
+          await supabase.auth.signOut();
+          toast({
+            title: 'Access Denied',
+            description: 'Only admin accounts can access this portal.',
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        toast({
+          title: t.success,
+          description: 'Welcome to SafeNav Command Center!',
+        });
+        
         navigate('/admin/dashboard');
-        setIsLoading(false);
-      }, 500);
+      }
+      
+      setIsLoading(false);
     } catch {
       setIsLoading(false);
     }
