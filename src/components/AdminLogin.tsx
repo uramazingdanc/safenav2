@@ -115,7 +115,7 @@ const AdminLogin = () => {
                 <Input
                   id="admin-email"
                   type="email"
-                  placeholder="admin@safenav.naval"
+                  placeholder="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
