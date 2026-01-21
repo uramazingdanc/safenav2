@@ -1,12 +1,20 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Map, AlertTriangle, Phone, User, Shield, LogOut } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from './LanguageToggle';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DesktopSidebar = () => {
   const { t } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: t.home },
@@ -56,13 +64,14 @@ const DesktopSidebar = () => {
       {/* Footer */}
       <div className="p-4 border-t border-sidebar-border space-y-4">
         <LanguageToggle />
-        <NavLink
-          to="/"
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors w-full"
         >
           <LogOut className="w-5 h-5" />
           <span className="font-medium">Sign Out</span>
-        </NavLink>
+        </button>
       </div>
     </aside>
   );
