@@ -55,16 +55,20 @@ const LoginScreen = () => {
   const [showVideo, setShowVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-  const { user, signIn, signUp } = useAuth();
+  const { user, isAdmin, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect if already logged in
+  // Redirect if already logged in based on role
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
+    if (!loading && user) {
+      if (isAdmin) {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     }
-  }, [user, navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +118,7 @@ const LoginScreen = () => {
           title: t.success,
           description: "Account created successfully! Welcome to SafeNav.",
         });
-        navigate("/dashboard");
+        // Navigation will be handled by useEffect when user state updates
       } else {
         const { error } = await signIn(email, password);
 
@@ -135,7 +139,7 @@ const LoginScreen = () => {
           title: t.success,
           description: "Welcome back to SafeNav!",
         });
-        navigate("/dashboard");
+        // Navigation will be handled by useEffect when user state updates
       }
     } finally {
       setIsLoading(false);

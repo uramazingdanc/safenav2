@@ -15,18 +15,21 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-  const { user, isAdmin, signIn } = useAuth();
+  const { user, isAdmin, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect if already logged in as admin
+  // Redirect if already logged in based on role - wait for loading to complete
   useEffect(() => {
-    if (user && isAdmin) {
-      navigate('/admin/dashboard');
-    } else if (user && !isAdmin) {
-      navigate('/dashboard');
+    if (!loading && user) {
+      if (isAdmin) {
+        navigate('/admin/dashboard');
+      } else {
+        // Non-admin trying to access admin login - redirect to user dashboard
+        navigate('/dashboard');
+      }
     }
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
   const handleAdminSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,11 +47,11 @@ const AdminLogin = () => {
         return;
       }
 
-      // The redirect will happen via useEffect when isAdmin is updated
       toast({
         title: t.success,
-        description: 'Welcome to Admin Command Center!',
+        description: 'Authenticating...',
       });
+      // Navigation will be handled by useEffect when user/isAdmin state updates
     } finally {
       setIsLoading(false);
     }
