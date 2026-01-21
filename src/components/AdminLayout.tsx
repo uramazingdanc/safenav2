@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ShieldAlert, LayoutDashboard, AlertTriangle, Building2, Users, FileText, LogOut } from 'lucide-react';
+import { ShieldAlert, LayoutDashboard, AlertTriangle, Building2, Users, FileText, LogOut, Map } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import LanguageToggle from './LanguageToggle';
@@ -20,6 +20,7 @@ const AdminLayout = () => {
 
   const navItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: t.dashboard },
+    { path: '/admin/map', icon: Map, label: 'Live Map' },
     { path: '/admin/hazards', icon: AlertTriangle, label: 'Hazards' },
     { path: '/admin/centers', icon: Building2, label: 'Evac Centers' },
     { path: '/admin/users', icon: Users, label: t.manageUsers },
