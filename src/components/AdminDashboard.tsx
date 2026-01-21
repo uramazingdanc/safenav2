@@ -1,261 +1,143 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Users, 
-  AlertTriangle, 
-  Building2, 
-  Plus, 
-  Map, 
-  Phone, 
-  Check, 
-  X, 
-  LogOut,
-  BookOpen,
-  Shield,
-  Clock,
-  MapPin
-} from 'lucide-react';
+import { Users, AlertTriangle, Building2, Plus, TrendingUp, Clock, MapPin, FileText, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { usePendingReports, useUpdateHazardReport } from '@/hooks/useHazardReports';
-import { useAllProfiles } from '@/hooks/useProfiles';
-import { useHazards } from '@/hooks/useHazards';
-import { useEvacuationCenters } from '@/hooks/useEvacuationCenters';
 import VideoManualModal from './VideoManualModal';
-import { useToast } from '@/hooks/use-toast';
-import { formatDistanceToNow } from 'date-fns';
 
 const AdminDashboard = () => {
   const { t } = useLanguage();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const [showGuide, setShowGuide] = useState(false);
 
-  // Fetch real data
-  const { data: profiles } = useAllProfiles();
-  const { data: hazards } = useHazards();
-  const { data: evacCenters } = useEvacuationCenters();
-  const { data: pendingReports } = usePendingReports();
-  const updateReport = useUpdateHazardReport();
-
   const stats = [
-    { 
-      label: t.totalUsers, 
-      value: profiles?.length?.toLocaleString() || '0', 
-      icon: Users, 
-      color: 'bg-blue-500',
-      iconColor: 'text-blue-400'
-    },
-    { 
-      label: t.totalHazards, 
-      value: hazards?.length?.toString() || '0', 
-      icon: AlertTriangle, 
-      color: 'bg-orange-500',
-      iconColor: 'text-orange-400'
-    },
-    { 
-      label: 'Evac Centers', 
-      value: evacCenters?.length?.toString() || '0', 
-      icon: Building2, 
-      color: 'bg-green-500',
-      iconColor: 'text-green-400'
-    },
+    { label: t.totalUsers, value: '12,458', icon: Users, change: '+12%', color: 'text-accent' },
+    { label: t.totalHazards, value: '47', icon: AlertTriangle, change: '+3', color: 'text-destructive' },
+    { label: 'Evac Centers', value: '23', icon: Building2, change: '0', color: 'text-success' },
+    { label: 'Active Alerts', value: '8', icon: Clock, change: '-2', color: 'text-warning' },
   ];
 
-  const handleVerify = async (reportId: string) => {
-    try {
-      await updateReport.mutateAsync({ id: reportId, status: 'verified' });
-      toast({ title: 'Report Verified', description: 'The hazard report has been verified.' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to verify report.', variant: 'destructive' });
-    }
-  };
-
-  const handleReject = async (reportId: string) => {
-    try {
-      await updateReport.mutateAsync({ id: reportId, status: 'rejected' });
-      toast({ title: 'Report Rejected', description: 'The hazard report has been rejected.' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to reject report.', variant: 'destructive' });
-    }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/admin/login');
-  };
+  const recentReports = [
+    { id: 1, type: 'Flood', location: 'Brgy. San Nicolas', time: '10 min ago', status: 'pending' },
+    { id: 2, type: 'Road Block', location: 'Capitol Site', time: '25 min ago', status: 'verified' },
+    { id: 3, type: 'Landslide', location: 'Mountain View', time: '1 hour ago', status: 'resolved' },
+    { id: 4, type: 'Power Outage', location: 'Lahug', time: '2 hours ago', status: 'pending' },
+  ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0f172a' }}>
+    <div className="p-4 md:p-6 space-y-6 pb-20 md:pb-6 animate-fade-in">
       {/* Header */}
-      <header className="border-b border-slate-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0D253F] rounded-lg flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">SafeNav Admin</h1>
-              <p className="text-sm text-slate-400">Disaster Risk Management System</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge className="bg-green-600 text-white hover:bg-green-600">Admin</Badge>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowGuide(true)}
-              className="text-slate-300 hover:text-white hover:bg-slate-700"
-            >
-              <BookOpen className="w-4 h-4 mr-2" />
-              System Manual
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{t.dashboard}</h1>
+          <p className="text-muted-foreground">Welcome back, Admin</p>
         </div>
-      </header>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowGuide(true)}
+            className="hidden md:flex"
+          >
+            <BookOpen className="w-4 h-4 mr-2" />
+            {t.systemGuide}
+          </Button>
+        </div>
+      </div>
 
-      {/* Main Content */}
-      <main className="p-6 space-y-6">
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {stats.map((stat) => (
-            <Card 
-              key={stat.label} 
-              className="bg-slate-800/50 border-slate-700"
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-lg ${stat.color} bg-opacity-20 flex items-center justify-center`}>
-                    <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {stats.map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                <span className={`text-xs ${stat.change.startsWith('+') ? 'text-success' : stat.change.startsWith('-') ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {stat.change}
+                </span>
+              </div>
+              <p className="text-2xl font-bold">{stat.value}</p>
+              <p className="text-xs text-muted-foreground">{stat.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-4">
+        <Button className="h-auto py-4 bg-success hover:bg-success/90">
+          <div className="flex flex-col items-center gap-2">
+            <Plus className="w-6 h-6" />
+            <span>{t.addHazard}</span>
+          </div>
+        </Button>
+        <Button className="h-auto py-4 bg-accent hover:bg-accent/90">
+          <div className="flex flex-col items-center gap-2">
+            <Building2 className="w-6 h-6" />
+            <span>{t.addEvacCenter}</span>
+          </div>
+        </Button>
+      </div>
+
+      {/* Recent Reports */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Recent Reports
+            </CardTitle>
+            <Button variant="ghost" size="sm">View All</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {recentReports.map((report) => (
+              <div
+                key={report.id}
+                className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg"
+              >
+                <div className={`w-2 h-2 rounded-full ${
+                  report.status === 'pending' ? 'bg-warning' :
+                  report.status === 'verified' ? 'bg-success' : 'bg-muted-foreground'
+                }`} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{report.type}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      report.status === 'pending' ? 'bg-warning/20 text-warning' :
+                      report.status === 'verified' ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {report.status}
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-3xl font-bold text-white">{stat.value}</p>
-                    <p className="text-sm text-slate-400">{stat.label}</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-3 h-3" />
+                    {report.location}
+                    <span>•</span>
+                    <Clock className="w-3 h-3" />
+                    {report.time}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Button 
-            className="h-24 flex-col gap-2 bg-green-600 hover:bg-green-700 text-white"
-            onClick={() => navigate('/admin/hazards')}
-          >
-            <Plus className="w-8 h-8" />
-            <span className="font-semibold">{t.addHazard}</span>
-          </Button>
-          <Button 
-            className="h-24 flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => navigate('/admin/centers')}
-          >
-            <Building2 className="w-8 h-8" />
-            <span className="font-semibold">{t.addEvacCenter}</span>
-          </Button>
-          <Button 
-            className="h-24 flex-col gap-2 bg-slate-600 hover:bg-slate-500 text-white"
-            onClick={() => toast({ title: 'Hotlines', description: 'Hotlines management coming soon!' })}
-          >
-            <Phone className="w-8 h-8" />
-            <span className="font-semibold">Hotlines</span>
-          </Button>
-          <Button 
-            className="h-24 flex-col gap-2 bg-slate-600 hover:bg-slate-500 text-white"
-            onClick={() => navigate('/map')}
-          >
-            <Map className="w-8 h-8" />
-            <span className="font-semibold">Live Map View</span>
-          </Button>
-        </div>
-
-        {/* Pending Reports */}
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-400" />
-              Pending Hazard Reports
-              {pendingReports && pendingReports.length > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {pendingReports.length}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!pendingReports || pendingReports.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">
-                <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No pending reports to review</p>
+                <Button variant="outline" size="sm">Review</Button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {pendingReports.map((report) => (
-                  <div
-                    key={report.id}
-                    className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-slate-600"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-white capitalize">{report.hazard_type}</span>
-                        <Badge variant="outline" className="text-orange-400 border-orange-400">
-                          Pending
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {report.location || 'Unknown location'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(report.created_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                      {report.description && (
-                        <p className="text-sm text-slate-300 mt-2 line-clamp-2">{report.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => handleVerify(report.id)}
-                        disabled={updateReport.isPending}
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Verify
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleReject(report.id)}
-                        disabled={updateReport.isPending}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Activity Chart Placeholder */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Activity Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-48 flex items-center justify-center bg-secondary/30 rounded-lg">
+            <p className="text-muted-foreground">Activity chart will appear here</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <VideoManualModal open={showGuide} onClose={() => setShowGuide(false)} />
     </div>

@@ -22,17 +22,17 @@ const AdminLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen flex w-full" style={{ backgroundColor: '#0f172a' }}>
+    <div className="min-h-screen flex w-full bg-background admin-theme">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-800 text-white h-screen sticky top-0">
-        <div className="p-6 border-b border-slate-700">
+      <aside className="hidden md:flex flex-col w-64 bg-destructive text-destructive-foreground h-screen sticky top-0">
+        <div className="p-6 border-b border-destructive-foreground/20">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0D253F] rounded-xl flex items-center justify-center">
-              <ShieldAlert className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-destructive-foreground/20 rounded-xl flex items-center justify-center">
+              <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-lg text-white">SafeNav</h1>
-              <p className="text-xs text-slate-400">Command Center</p>
+              <h1 className="font-bold text-lg">SafeNav</h1>
+              <p className="text-xs text-destructive-foreground/70">Command Center</p>
             </div>
           </div>
         </div>
@@ -47,8 +47,8 @@ const AdminLayout = () => {
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
                   isActive
-                    ? 'bg-slate-700 text-white'
-                    : 'hover:bg-slate-700/50 text-slate-300'
+                    ? 'bg-destructive-foreground/20'
+                    : 'hover:bg-destructive-foreground/10 text-destructive-foreground/80'
                 )}
               >
                 <item.icon className="w-5 h-5" />
@@ -58,10 +58,10 @@ const AdminLayout = () => {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-700 space-y-3">
+        <div className="p-4 border-t border-destructive-foreground/20 space-y-3">
           <Button
             variant="outline"
-            className="w-full justify-start border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+            className="w-full justify-start border-destructive-foreground/30 text-destructive-foreground hover:bg-destructive-foreground/10"
             onClick={() => setShowGuide(true)}
           >
             <BookOpen className="w-4 h-4 mr-2" />
@@ -70,7 +70,7 @@ const AdminLayout = () => {
           <LanguageToggle />
           <Button
             variant="ghost"
-            className="w-full justify-start text-red-400 hover:bg-red-500/20 hover:text-red-300"
+            className="w-full justify-start text-destructive-foreground/70 hover:bg-destructive-foreground/10"
             onClick={() => navigate('/admin/login')}
           >
             <LogOut className="w-4 h-4 mr-2" />
@@ -82,7 +82,7 @@ const AdminLayout = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
         {/* Mobile Header */}
-        <header className="md:hidden flex items-center justify-between p-4 bg-slate-800 text-white border-b border-slate-700">
+        <header className="md:hidden flex items-center justify-between p-4 bg-destructive text-destructive-foreground">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-6 h-6" />
             <span className="font-bold">Admin</span>
@@ -96,7 +96,7 @@ const AdminLayout = () => {
         </div>
 
         {/* Mobile Bottom Nav */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 z-50">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t z-50">
           <div className="flex justify-around items-center h-16">
             {navItems.slice(0, 5).map((item) => {
               const isActive = location.pathname === item.path;
@@ -106,7 +106,7 @@ const AdminLayout = () => {
                   to={item.path}
                   className={cn(
                     'flex flex-col items-center justify-center flex-1 py-2',
-                    isActive ? 'text-blue-400' : 'text-slate-400'
+                    isActive ? 'text-destructive' : 'text-muted-foreground'
                   )}
                 >
                   <item.icon className="w-5 h-5" />

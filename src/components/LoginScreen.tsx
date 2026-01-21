@@ -12,7 +12,6 @@ import TermsModal from "./TermsModal";
 import VideoManualModal from "./VideoManualModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const barangays = [
@@ -56,20 +55,16 @@ const LoginScreen = () => {
   const [showVideo, setShowVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-  const { user, signIn, signUp, isAdmin } = useAuth();
+  const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect if already logged in - check admin status
+  // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      if (isAdmin) {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/dashboard");
-      }
+      navigate("/dashboard");
     }
-  }, [user, isAdmin, navigate]);
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,27 +131,11 @@ const LoginScreen = () => {
           return;
         }
 
-        // Check if user is admin and redirect accordingly
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
-        if (currentUser) {
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', currentUser.id)
-            .single();
-
-          toast({
-            title: t.success,
-            description: "Welcome back to SafeNav!",
-          });
-
-          if (roleData?.role === 'admin') {
-            navigate("/admin/dashboard");
-          } else {
-            navigate("/dashboard");
-          }
-        }
+        toast({
+          title: t.success,
+          description: "Welcome back to SafeNav!",
+        });
+        navigate("/dashboard");
       }
     } finally {
       setIsLoading(false);
@@ -240,7 +219,7 @@ const LoginScreen = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={isSignUp ? "Enter your email" : "you@example.com"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

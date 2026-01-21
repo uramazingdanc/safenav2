@@ -49,12 +49,15 @@ export const usePendingReports = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('hazard_reports')
-        .select('*')
+        .select(`
+          *,
+          profiles:reporter_id(full_name)
+        `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as HazardReport[];
+      return data;
     }
   });
 };
