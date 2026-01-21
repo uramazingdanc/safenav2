@@ -11,11 +11,13 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const AdminLogin = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-  const { user, isAdmin, signIn } = useAuth();
+  const { user, isAdmin, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -24,7 +26,6 @@ const AdminLogin = () => {
     if (user && isAdmin) {
       navigate('/admin/dashboard');
     }
-    // Don't redirect non-admin users from this page - let them try to login
   }, [user, isAdmin, navigate]);
 
   const handleAdminSignIn = async (e: React.FormEvent) => {
@@ -55,7 +56,6 @@ const AdminLogin = () => {
           .maybeSingle();
 
         if (roleData?.role !== 'admin') {
-          // Sign out non-admin users
           await supabase.auth.signOut();
           toast({
             title: 'Access Denied',
@@ -80,8 +80,81 @@ const AdminLogin = () => {
     }
   };
 
+  const handleAdminSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!fullName.trim()) {
+      toast({
+        title: 'Required Field',
+        description: 'Please enter your full name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: 'Password Too Short',
+        description: 'Password must be at least 6 characters.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await signUp(email, password, {
+        full_name: fullName,
+      });
+
+      if (error) {
+        let message = error.message;
+        if (error.message.includes('already registered')) {
+          message = 'This email is already registered. Please sign in instead.';
+        }
+        toast({
+          title: 'Sign Up Failed',
+          description: message,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Update the user role to admin
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (currentUser) {
+        // Update role to admin
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .update({ role: 'admin' })
+          .eq('user_id', currentUser.id);
+
+        if (roleError) {
+          console.error('Error setting admin role:', roleError);
+        }
+
+        toast({
+          title: t.success,
+          description: 'Admin account created! Welcome to SafeNav Command Center.',
+        });
+        
+        // Small delay to allow role update to propagate
+        setTimeout(() => {
+          navigate('/admin/dashboard');
+        }, 500);
+      }
+      
+      setIsLoading(false);
+    } catch {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#C62828' }}>
+    <div className="min-h-screen flex flex-col bg-destructive">
       {/* Back Button */}
       <div className="p-4">
         <button
@@ -101,73 +174,115 @@ const AdminLogin = () => {
             {/* Logo */}
             <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="w-20 h-20 bg-[#0D253F] rounded-2xl flex items-center justify-center shadow-lg">
-                  <Shield className="w-10 h-10 text-white" />
-                  <Compass className="w-5 h-5 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+                  <Shield className="w-10 h-10 text-primary-foreground" />
+                  <Compass className="w-5 h-5 text-primary-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                 </div>
               </div>
             </div>
 
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-[#0D253F]">{t.adminAccess}</h1>
-              <p className="text-muted-foreground mt-1">SafeNav Emergency Guardian</p>
+              <h1 className="text-2xl font-bold text-primary">
+                {isSignUp ? 'Admin Registration' : t.adminAccess}
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                {isSignUp ? 'Create your admin account' : 'SafeNav Emergency Guardian'}
+              </p>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleAdminSignIn} className="space-y-5">
+            <form onSubmit={isSignUp ? handleAdminSignUp : handleAdminSignIn} className="space-y-5">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="admin-name" className="text-primary font-medium">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="admin-name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="h-12"
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="admin-email" className="text-[#0D253F] font-medium">
-                  Username
+                <Label htmlFor="admin-email" className="text-primary font-medium">
+                  Email
                 </Label>
                 <Input
                   id="admin-email"
                   type="email"
-                  placeholder="email"
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12 border-gray-300 focus:border-[#C62828] focus:ring-[#C62828]"
+                  className="h-12"
                   disabled={isLoading}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="admin-password" className="text-[#0D253F] font-medium">
+                <Label htmlFor="admin-password" className="text-primary font-medium">
                   Password
                 </Label>
                 <Input
                   id="admin-password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={isSignUp ? 'Create a password (min 6 chars)' : '••••••••'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-12 border-gray-300 focus:border-[#C62828] focus:ring-[#C62828]"
+                  minLength={6}
+                  className="h-12"
                   disabled={isLoading}
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full h-12 text-base font-semibold text-white"
-                style={{ backgroundColor: '#C62828' }}
+                className="w-full h-12 text-base font-semibold bg-destructive hover:bg-destructive/90 text-white"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing In...
+                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
                   </>
+                ) : isSignUp ? (
+                  'Create Admin Account'
                 ) : (
                   'Admin Sign In'
                 )}
               </Button>
             </form>
 
-            {/* Footer */}
+            {/* Toggle between Login and Signup */}
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
+                {isSignUp ? 'Already have an admin account?' : "Don't have an admin account?"}{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setFullName('');
+                  }}
+                  className="text-destructive font-semibold hover:underline"
+                  disabled={isLoading}
+                >
+                  {isSignUp ? 'Sign In' : 'Register'}
+                </button>
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-4 text-center">
+              <p className="text-xs text-muted-foreground">
                 Authorized personnel only. Unauthorized access is prohibited.
               </p>
             </div>
