@@ -28,15 +28,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
 
       if (error) {
         console.error('Error fetching user role:', error);
         return null;
       }
 
-      return data?.role as UserRole || 'user';
+      const roles = (data ?? []).map((r) => r.role as UserRole);
+
+      if (roles.includes('admin')) return 'admin';
+      if (roles.includes('moderator')) return 'moderator';
+      return 'user';
     } catch (err) {
       console.error('Error in fetchUserRole:', err);
       return null;
@@ -48,18 +51,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
+
+        const shouldRefetchRole = event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY';
         setSession(session);
         setUser(session?.user ?? null);
+
+        if (shouldRefetchRole) {
+          // IMPORTANT: when signing in (or similar), role is unknown until fetched.
+          // Otherwise UI can redirect using a stale role.
+          setLoading(true);
+          setUserRole(null);
+        }
         
         // Defer role fetch with setTimeout to prevent deadlock
-        if (session?.user) {
+        if (shouldRefetchRole && session?.user) {
           setTimeout(async () => {
             const role = await fetchUserRole(session.user.id);
             console.log('User role fetched:', role);
             setUserRole(role);
             setLoading(false);
           }, 0);
-        } else {
+        } else if (!session?.user) {
           setUserRole(null);
           setLoading(false);
         }

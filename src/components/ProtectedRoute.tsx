@@ -23,6 +23,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
+  // Keep admin accounts inside the admin portal only.
+  if (!requireAdmin && isAdmin) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
