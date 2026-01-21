@@ -240,7 +240,7 @@ const LoginScreen = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder={isSignUp ? "Enter your email" : "you@example.com"}
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
