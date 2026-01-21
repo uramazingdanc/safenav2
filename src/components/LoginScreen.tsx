@@ -12,6 +12,7 @@ import TermsModal from "./TermsModal";
 import VideoManualModal from "./VideoManualModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const barangays = [
@@ -55,16 +56,20 @@ const LoginScreen = () => {
   const [showVideo, setShowVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useLanguage();
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect if already logged in
+  // Redirect if already logged in - check admin status
   useEffect(() => {
     if (user) {
-      navigate("/dashboard");
+      if (isAdmin) {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     }
-  }, [user, navigate]);
+  }, [user, isAdmin, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,11 +136,27 @@ const LoginScreen = () => {
           return;
         }
 
-        toast({
-          title: t.success,
-          description: "Welcome back to SafeNav!",
-        });
-        navigate("/dashboard");
+        // Check if user is admin and redirect accordingly
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (currentUser) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', currentUser.id)
+            .single();
+
+          toast({
+            title: t.success,
+            description: "Welcome back to SafeNav!",
+          });
+
+          if (roleData?.role === 'admin') {
+            navigate("/admin/dashboard");
+          } else {
+            navigate("/dashboard");
+          }
+        }
       }
     } finally {
       setIsLoading(false);
