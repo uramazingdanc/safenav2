@@ -5,24 +5,14 @@ export const useUnverifiedUsers = () => {
   return useQuery({
     queryKey: ['profiles', 'unverified'],
     queryFn: async () => {
-      // Use rpc or raw query to handle the new column that's not in types yet
       const { data, error } = await supabase
-        .rpc('get_unverified_profiles' as never)
-        .select('*');
+        .from('profiles')
+        .select('*')
+        .eq('is_verified', false)
+        .order('created_at', { ascending: false });
 
-      // Fallback to regular query with type assertion if RPC doesn't exist
-      if (error) {
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (profileError) throw profileError;
-        
-        // Filter unverified profiles client-side
-        return (profiles || []).filter((p: any) => p.is_verified === false);
-      }
-      return data;
+      if (error) throw error;
+      return data || [];
     }
   });
 };
