@@ -29,24 +29,23 @@ const VideoManualModal = ({ open, onClose }: VideoManualModalProps) => {
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="bg-secondary/50 rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Play className="w-8 h-8 text-primary" />
-            </div>
-            <p className="text-muted-foreground mb-4">
-              Access video tutorials and user guides to learn how to use SafeNav effectively.
-            </p>
-            <Button
-              onClick={() => window.open(driveUrl, '_blank')}
-              className="gap-2"
+          <div className="bg-secondary/50 rounded-lg overflow-hidden">
+            <video 
+              controls 
+              className="w-full aspect-video"
+              poster="/placeholder.svg"
             >
-              <ExternalLink className="w-4 h-4" />
-              Open Video Tutorials
-            </Button>
+              <source src="/videos/user-guide.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
           </div>
           
+          <p className="text-sm text-muted-foreground text-center">
+            Watch the video above to learn how to use SafeNav effectively.
+          </p>
+          
           <div className="text-sm text-muted-foreground">
-            <p className="font-medium mb-2">Available tutorials:</p>
+            <p className="font-medium mb-2">Topics covered:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Getting started with SafeNav</li>
               <li>How to report hazards</li>
