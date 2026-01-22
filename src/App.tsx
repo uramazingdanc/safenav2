@@ -18,6 +18,7 @@ import MapPage from "./pages/MapPage";
 import ReportHazard from "./components/ReportHazard";
 import EmergencyHotlines from "./components/EmergencyHotlines";
 import UserProfile from "./components/UserProfile";
+import HelpPage from "./pages/HelpPage";
 
 // Admin Layout & Pages
 import AdminLayout from "./components/AdminLayout";
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/map" element={<MapPage />} />
                 <Route path="/report" element={<ReportHazard />} />
                 <Route path="/hotlines" element={<EmergencyHotlines />} />
+                <Route path="/help" element={<HelpPage />} />
                 <Route path="/profile" element={<UserProfile />} />
               </Route>
 

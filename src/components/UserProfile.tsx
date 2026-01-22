@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { User, Settings, Bell, Shield, LogOut, ChevronRight, Loader2, MapPin, Phone as PhoneIcon } from 'lucide-react';
+import { User, LogOut, Loader2, MapPin, Phone as PhoneIcon, CheckCircle, Clock, Map, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -38,12 +38,6 @@ const UserProfile = () => {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [barangay, setBarangay] = useState('');
-
-  const menuItems = [
-    { icon: Bell, label: 'Notifications', description: 'Manage alert preferences' },
-    { icon: Shield, label: 'Privacy & Security', description: 'Account security settings' },
-    { icon: Settings, label: 'App Settings', description: 'Customize your experience' },
-  ];
 
   const handleSignOut = async () => {
     await signOut();
@@ -82,171 +76,173 @@ const UserProfile = () => {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-6 flex items-center justify-center">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  return (
-    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-16 h-16">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                {profile?.full_name ? getInitials(profile.full_name) : 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold">{profile?.full_name || 'User'}</h2>
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
-              {profile?.barangay && (
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  Brgy. {profile.barangay}
-                </p>
-              )}
-            </div>
-            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" onClick={handleEditOpen}>
-                  Edit
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Edit Profile</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="e.g., 09123456789"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="barangay">Barangay</Label>
-                    <Select value={barangay} onValueChange={setBarangay}>
-                      <SelectTrigger className="w-full bg-background">
-                        <SelectValue placeholder="Select your barangay" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
-                        {NAVAL_BARANGAYS.map((brgy) => (
-                          <SelectItem key={brgy} value={brgy}>
-                            {brgy}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSaveProfile} disabled={updateProfile.isPending}>
-                    {updateProfile.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : null}
-                    Save Changes
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
+  // Type assertion to handle is_verified which might not be in types yet
+  const isVerified = (profile as any)?.is_verified ?? false;
 
-      {/* Contact Info */}
-      {profile?.phone_number && (
-        <Card>
-          <CardHeader className="pb-2">
-            <h3 className="font-semibold">Contact Information</h3>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
+  return (
+    <div className="min-h-screen bg-secondary/30">
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground p-4 pb-6">
+        <h1 className="text-xl font-bold">Profile</h1>
+        <p className="text-sm text-primary-foreground/80">Manage your account</p>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Profile Card */}
+        <Card className="border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="w-14 h-14">
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                  {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-primary">{profile?.full_name || 'User'}</h2>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+              </div>
+              <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={handleEditOpen}>
+                    Edit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit Profile</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input
+                        id="fullName"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Enter your full name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="e.g., 09123456789"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="barangay">Barangay</Label>
+                      <Select value={barangay} onValueChange={setBarangay}>
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder="Select your barangay" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {NAVAL_BARANGAYS.map((brgy) => (
+                            <SelectItem key={brgy} value={brgy}>
+                              {brgy}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveProfile} disabled={updateProfile.isPending}>
+                      {updateProfile.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Save Changes
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Contact Details */}
+            <div className="mt-4 space-y-3">
+              {profile?.phone_number && (
+                <div className="flex items-center gap-3">
+                  <PhoneIcon className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Phone Number</p>
+                    <p className="text-sm font-medium text-primary">{profile.phone_number}</p>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-center gap-3">
-                <PhoneIcon className="w-4 h-4 text-muted-foreground" />
+                <MapPin className="w-4 h-4 text-muted-foreground" />
                 <div>
-                  <p className="font-medium">Phone Number</p>
-                  <p className="text-sm text-muted-foreground">{profile.phone_number}</p>
+                  <p className="text-xs text-muted-foreground">Barangay</p>
+                  <p className="text-sm font-medium text-primary">{profile?.barangay || 'Not set'}</p>
+                </div>
+              </div>
+
+              {/* Verification Status */}
+              <div className="flex items-center gap-3">
+                {isVerified ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Verification Status</p>
+                  {isVerified ? (
+                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="gap-1">
+                      <Clock className="w-3 h-3" />
+                      Pending Verification
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Settings Menu */}
-      <Card>
-        <CardContent className="p-0">
-          {menuItems.map((item, index) => (
+        {/* Quick Links */}
+        <Card className="border-border">
+          <CardContent className="p-0">
             <div
-              key={item.label}
-              className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-secondary/50 transition-colors ${
-                index !== menuItems.length - 1 ? 'border-b' : ''
-              }`}
+              className="flex items-center justify-center gap-2 p-4 cursor-pointer hover:bg-secondary/50 border-b border-border"
+              onClick={() => navigate('/map')}
             >
-              <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
-                <item.icon className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium">{item.label}</p>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              <Map className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">View Safety Map</span>
             </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Quick Settings */}
-      <Card>
-        <CardContent className="py-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Push Notifications</p>
-              <p className="text-sm text-muted-foreground">Receive emergency alerts</p>
+            <div
+              className="flex items-center justify-center gap-2 p-4 cursor-pointer hover:bg-secondary/50"
+              onClick={() => navigate('/hotlines')}
+            >
+              <Phone className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Emergency Hotlines</span>
             </div>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Location Services</p>
-              <p className="text-sm text-muted-foreground">Allow GPS access</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Sign Out */}
-      <Button
-        variant="outline"
-        className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground"
-        onClick={handleSignOut}
-      >
-        <LogOut className="w-4 h-4 mr-2" />
-        Sign Out
-      </Button>
-
-      <p className="text-center text-xs text-muted-foreground">
-        SafeNav v1.0.0
-      </p>
+        {/* Sign Out */}
+        <Button
+          variant="destructive"
+          className="w-full"
+          onClick={handleSignOut}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      </div>
     </div>
   );
 };

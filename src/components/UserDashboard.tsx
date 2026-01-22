@@ -1,139 +1,165 @@
-import { Shield, MapPin, AlertTriangle, Phone, ArrowRight, Users } from 'lucide-react';
+import { MapPin, Navigation, Phone, HelpCircle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useProfile } from '@/hooks/useProfiles';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { data: profile } = useProfile();
 
   const quickActions = [
     {
-      title: t.findRoute,
-      description: 'Get safe evacuation routes',
+      title: 'Safety Map',
       icon: MapPin,
-      color: 'bg-accent text-accent-foreground',
       path: '/map',
+      variant: 'primary' as const,
     },
     {
-      title: t.reportHazard,
-      description: 'Report a new hazard',
-      icon: AlertTriangle,
-      color: 'bg-warning text-warning-foreground',
-      path: '/report',
+      title: 'Find Route',
+      icon: Navigation,
+      path: '/map',
+      variant: 'outline' as const,
     },
     {
-      title: t.emergencyHotlines,
-      description: 'Call for immediate help',
+      title: 'Hotlines',
       icon: Phone,
-      color: 'bg-destructive text-destructive-foreground',
       path: '/hotlines',
+      variant: 'outline' as const,
+    },
+    {
+      title: 'Help',
+      icon: HelpCircle,
+      path: '/help',
+      variant: 'outline' as const,
     },
   ];
 
-  const recentAlerts = [
-    { id: 1, title: 'Flash Flood Warning', location: 'Downtown Area', time: '2 hours ago', severity: 'high' },
-    { id: 2, title: 'Road Closure', location: 'Main Street', time: '5 hours ago', severity: 'medium' },
-    { id: 3, title: 'Power Outage', location: 'District 5', time: '1 day ago', severity: 'low' },
+  const emergencyServices = [
+    { name: 'MDRRMO', number: '0905-480-1477' },
+    { name: 'NAVRU', number: '0916-285-9723' },
+    { name: 'Naval Fire Station', number: '0968-024-3448' },
+    { name: 'Naval Police Office', number: '0998-598-5765' },
   ];
+
+  const nationalHotlines = [
+    { name: 'National Emergency', number: '911' },
+    { name: 'PNP Hotline', number: '117' },
+  ];
+
+  const handleCall = (number: string) => {
+    window.location.href = `tel:${number.replace(/[^0-9+]/g, "")}`;
+  };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6 text-primary-foreground">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
-            <Shield className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">{t.welcomeBack}</h1>
-            <p className="text-primary-foreground/80 text-sm">Stay safe with SafeNav</p>
-          </div>
-        </div>
-        <p className="text-sm text-primary-foreground/70 mt-3">
-          3 active alerts in your area. Check the map for safe routes.
-        </p>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground p-4 pb-6">
+        <h1 className="text-xl font-bold">Welcome, {profile?.full_name?.split(' ')[0] || 'User'}!</h1>
+        <p className="text-sm text-primary-foreground/80">Stay informed about hazards and emergencies in your area</p>
       </div>
 
-      {/* Quick Actions */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {quickActions.map((action) => (
-            <Card
-              key={action.path}
-              className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
+      <div className="p-4 space-y-6 -mt-2">
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {quickActions.map((action, index) => (
+            <Button
+              key={action.path + index}
+              variant={action.variant === 'primary' ? 'default' : 'outline'}
+              className={`h-auto py-4 flex flex-col items-center gap-2 ${
+                action.variant === 'primary' 
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground col-span-1' 
+                  : 'bg-background border-border hover:bg-secondary'
+              } ${index === 0 ? 'col-span-1' : ''}`}
               onClick={() => navigate(action.path)}
             >
-              <CardContent className="p-4">
-                <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center mb-3`}>
-                  <action.icon className="w-6 h-6" />
-                </div>
-                <h3 className="font-semibold">{action.title}</h3>
-                <p className="text-sm text-muted-foreground">{action.description}</p>
-              </CardContent>
-            </Card>
+              <action.icon className="w-5 h-5" />
+              <span className="text-sm font-medium">{action.title}</span>
+            </Button>
           ))}
         </div>
-      </section>
 
-      {/* Recent Alerts */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Recent Alerts</h2>
-          <Button variant="ghost" size="sm" className="text-primary">
-            View All <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="p-0">
-            {recentAlerts.map((alert, index) => (
-              <div
-                key={alert.id}
-                className={`p-4 flex items-center gap-4 ${
-                  index !== recentAlerts.length - 1 ? 'border-b' : ''
-                }`}
-              >
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    alert.severity === 'high'
-                      ? 'bg-destructive'
-                      : alert.severity === 'medium'
-                      ? 'bg-warning'
-                      : 'bg-muted-foreground'
-                  }`}
-                />
-                <div className="flex-1">
-                  <h4 className="font-medium">{alert.title}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {alert.location} • {alert.time}
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+        {/* Your Barangay Section */}
+        <Card className="border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Your Barangay</p>
+                <p className="font-semibold text-primary">{profile?.barangay || 'Not set'}</p>
               </div>
-            ))}
+              <Button 
+                variant="default" 
+                size="sm"
+                className="bg-primary hover:bg-primary/90"
+                onClick={() => navigate('/map')}
+              >
+                View Map
+              </Button>
+            </div>
           </CardContent>
         </Card>
-      </section>
 
-      {/* Safety Tips */}
-      <section>
-        <Card className="bg-secondary/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              Safety Tip of the Day
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Always keep an emergency kit ready with water, food, flashlight, and first aid supplies.
-              Know your nearest evacuation center and have multiple routes planned.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+        {/* Emergency Contacts Section */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-primary">Emergency Contacts</h2>
+            <Button 
+              variant="link" 
+              size="sm" 
+              className="text-primary p-0 h-auto"
+              onClick={() => navigate('/hotlines')}
+            >
+              View All
+            </Button>
+          </div>
+
+          <Card className="border-border">
+            <CardContent className="p-0">
+              {/* Emergency Services */}
+              <div className="p-3 border-b border-border">
+                <h3 className="text-sm font-semibold text-primary mb-2">Emergency Services</h3>
+                <div className="space-y-1">
+                  {emergencyServices.map((service) => (
+                    <div
+                      key={service.name}
+                      className="flex items-center justify-between py-2 cursor-pointer hover:bg-secondary/50 rounded px-2 -mx-2"
+                      onClick={() => handleCall(service.number)}
+                    >
+                      <span className="text-sm text-primary font-medium">{service.name}</span>
+                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-muted-foreground">
+                        <Phone className="w-3 h-3" />
+                        Call
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* National Hotlines */}
+              <div className="p-3">
+                <h3 className="text-sm font-semibold text-primary mb-2">National Hotlines</h3>
+                <div className="space-y-1">
+                  {nationalHotlines.map((hotline) => (
+                    <div
+                      key={hotline.name}
+                      className="flex items-center justify-between py-2 cursor-pointer hover:bg-secondary/50 rounded px-2 -mx-2"
+                      onClick={() => handleCall(hotline.number)}
+                    >
+                      <span className="text-sm text-primary font-medium">{hotline.name}</span>
+                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-primary">
+                        <Phone className="w-3 h-3" />
+                        {hotline.number}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

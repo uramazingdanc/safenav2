@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Map, AlertTriangle, Phone, User } from 'lucide-react';
+import { Home, Map, Phone, HelpCircle, User } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
@@ -8,11 +8,11 @@ const BottomNav = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/dashboard', icon: Home, label: t.home },
-    { path: '/map', icon: Map, label: t.map },
-    { path: '/report', icon: AlertTriangle, label: t.report },
-    { path: '/hotlines', icon: Phone, label: t.hotlines },
-    { path: '/profile', icon: User, label: t.profile },
+    { path: '/dashboard', icon: Home, label: 'Home' },
+    { path: '/map', icon: Map, label: 'Map' },
+    { path: '/hotlines', icon: Phone, label: 'Hotlines' },
+    { path: '/help', icon: HelpCircle, label: 'Help' },
+    { path: '/profile', icon: User, label: 'Profile' },
   ];
 
   return (
