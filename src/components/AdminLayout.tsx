@@ -10,15 +10,15 @@ import {
   LogOut, 
   Map,
   Menu,
-  X,
-  ChevronLeft,
-  Bell
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import NotificationCenter from '@/components/admin/NotificationCenter';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const AdminLayout = () => {
   const { t } = useLanguage();
@@ -149,18 +149,14 @@ const AdminLayout = () => {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Language Switcher */}
+              <LanguageSwitcher variant="admin" />
+              
               {/* Notifications */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white/70 hover:text-white hover:bg-command-muted relative"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-              </Button>
+              <NotificationCenter />
               
               {/* Admin Badge */}
-              <Badge className="bg-ocean hover:bg-ocean text-white px-3 py-1 text-xs">
+              <Badge className="bg-ocean hover:bg-ocean text-white px-3 py-1 text-xs hidden sm:inline-flex">
                 Admin
               </Badge>
               
