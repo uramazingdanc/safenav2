@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Search, Filter, MoreVertical, Eye, KeyRound, Ban, CheckCircle } from 'lucide-react';
+import { Users, Search, Filter, MoreVertical, Eye, KeyRound, Ban, CheckCircle, Radio, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,34 +20,21 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useAllProfiles } from '@/hooks/useProfiles';
-import { MOCK_USERS, MockUser } from '@/data/mockAdminData';
+import { useRealtimeUsers } from '@/hooks/useRealtimeUsers';
+import { useVerifyUser } from '@/hooks/useUnverifiedUsers';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 const AdminUsers = () => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: dbProfiles, isLoading } = useAllProfiles();
+  const { data: profiles, isLoading } = useRealtimeUsers();
+  const verifyUser = useVerifyUser();
 
-  // Use mock data if database is empty
-  const profiles: MockUser[] = dbProfiles?.length 
-    ? dbProfiles.map((p: any) => ({
-        id: p.id,
-        full_name: p.full_name,
-        email: p.email || 'No email',
-        barangay: p.barangay || '',
-        phone_number: p.phone_number || '',
-        status: 'verified' as const,
-        created_at: p.created_at,
-        role: (p as any).user_roles?.[0]?.role || 'user',
-      }))
-    : MOCK_USERS;
-
-  const filteredUsers = profiles.filter(user => 
+  const filteredUsers = profiles?.filter(user => 
     user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.barangay?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    user.barangay?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   const getInitials = (name: string) => {
     return name
@@ -69,8 +56,8 @@ const AdminUsers = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'verified') {
+  const getStatusBadge = (isVerified: boolean) => {
+    if (isVerified) {
       return (
         <Badge className="bg-emerald-500/20 text-emerald-400 border-0">
           <CheckCircle className="w-3 h-3 mr-1" />
@@ -79,28 +66,48 @@ const AdminUsers = () => {
       );
     }
     return (
-      <Badge className="bg-slate-500/20 text-slate-400 border-0">
-        Unverified
+      <Badge className="bg-amber-500/20 text-amber-400 border-0">
+        Pending
       </Badge>
     );
   };
 
+  const handleVerify = async (userId: string) => {
+    try {
+      await verifyUser.mutateAsync(userId);
+      toast.success('User verified successfully');
+    } catch (error) {
+      toast.error('Failed to verify user');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[50vh] bg-command">
+        <Loader2 className="w-8 h-8 animate-spin text-ocean" />
+      </div>
+    );
+  }
+
+  const verifiedCount = profiles?.filter(u => u.is_verified).length || 0;
+  const unverifiedCount = profiles?.filter(u => !u.is_verified).length || 0;
+
   return (
-    <div className="p-4 md:p-6 space-y-6 pb-20 md:pb-6 animate-fade-in bg-[#0f172a] min-h-screen">
+    <div className="p-4 md:p-6 space-y-6 pb-20 md:pb-6 animate-fade-in bg-command min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-            <Users className="w-6 h-6 text-blue-400" />
+          <div className="w-12 h-12 bg-ocean/20 rounded-xl flex items-center justify-center">
+            <Users className="w-6 h-6 text-ocean" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">{t.manageUsers}</h1>
-            <p className="text-sm text-slate-400">{profiles.length} registered users</p>
+            <p className="text-sm text-slate-400 flex items-center gap-2">
+              <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+              {profiles?.length || 0} registered users • Real-time
+            </p>
           </div>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-          + Add User
-        </Button>
       </div>
 
       {/* Search & Filter */}
@@ -108,7 +115,7 @@ const AdminUsers = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <Input 
-            placeholder="Search by name, email, or barangay..." 
+            placeholder="Search by name or barangay..." 
             className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -148,13 +155,12 @@ const AdminUsers = () => {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-blue-500/20 text-blue-400 text-xs">
+                          <AvatarFallback className="bg-ocean/20 text-ocean text-xs">
                             {getInitials(user.full_name)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium text-white">{user.full_name}</p>
-                          <p className="text-xs text-slate-500">{user.email}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -164,8 +170,8 @@ const AdminUsers = () => {
                     <TableCell className="text-slate-300 hidden lg:table-cell">
                       {user.phone_number || '-'}
                     </TableCell>
-                    <TableCell>{getStatusBadge(user.status)}</TableCell>
-                    <TableCell className="hidden md:table-cell">{getRoleBadge(user.role)}</TableCell>
+                    <TableCell>{getStatusBadge(user.is_verified)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{getRoleBadge(user.role || 'user')}</TableCell>
                     <TableCell className="text-slate-400 text-sm hidden lg:table-cell">
                       {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
                     </TableCell>
@@ -181,6 +187,15 @@ const AdminUsers = () => {
                             <Eye className="w-4 h-4 mr-2" />
                             View Profile
                           </DropdownMenuItem>
+                          {!user.is_verified && (
+                            <DropdownMenuItem 
+                              className="text-emerald-400 hover:text-emerald-300 hover:bg-slate-700 cursor-pointer"
+                              onClick={() => handleVerify(user.user_id)}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Verify User
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer">
                             <KeyRound className="w-4 h-4 mr-2" />
                             Reset Password
@@ -202,9 +217,9 @@ const AdminUsers = () => {
 
       {/* Summary */}
       <div className="flex gap-4 text-sm text-slate-400">
-        <span>Total: {profiles.length}</span>
-        <span>Verified: {profiles.filter(u => u.status === 'verified').length}</span>
-        <span>Unverified: {profiles.filter(u => u.status === 'unverified').length}</span>
+        <span>Total: {profiles?.length || 0}</span>
+        <span className="text-emerald-400">Verified: {verifiedCount}</span>
+        <span className="text-amber-400">Pending: {unverifiedCount}</span>
       </div>
     </div>
   );
