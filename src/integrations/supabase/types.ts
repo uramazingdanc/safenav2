@@ -152,6 +152,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          priority: string
+          related_entity_id: string | null
+          related_entity_type: string | null
+          related_user_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          priority?: string
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          related_user_id?: string | null
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          related_user_id?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           admin_notes: string | null

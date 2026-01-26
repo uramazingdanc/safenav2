@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-type Language = 'en' | 'fil' | 'ceb';
+export type Language = 'en' | 'fil' | 'ceb';
 
 interface Translations {
   // Common
@@ -56,6 +56,10 @@ interface Translations {
   systemGuide: string;
   manageUsers: string;
   viewReports: string;
+  commandCenter: string;
+  liveMap: string;
+  evacCenters: string;
+  reports: string;
   
   // Status
   loading: string;
@@ -64,6 +68,84 @@ interface Translations {
   cancel: string;
   save: string;
   close: string;
+  
+  // Actions
+  approve: string;
+  reject: string;
+  verify: string;
+  viewAll: string;
+  edit: string;
+  delete: string;
+  search: string;
+  filter: string;
+  export: string;
+  
+  // Notifications
+  notifications: string;
+  unread: string;
+  markAllRead: string;
+  noNotifications: string;
+  critical: string;
+  highPriority: string;
+  sosAlert: string;
+  newHazardReport: string;
+  verificationRequest: string;
+  
+  // User Verification
+  getVerified: string;
+  uploadId: string;
+  verificationPending: string;
+  verificationApproved: string;
+  verificationRejected: string;
+  verifiedGuardian: string;
+  submitForReview: string;
+  
+  // Hazard Types
+  flood: string;
+  landslide: string;
+  earthquake: string;
+  typhoon: string;
+  accident: string;
+  
+  // Hazard Status
+  active: string;
+  resolved: string;
+  pending: string;
+  verified: string;
+  rejected: string;
+  open: string;
+  closed: string;
+  full: string;
+  standby: string;
+  
+  // Severity
+  low: string;
+  medium: string;
+  high: string;
+  
+  // Weather
+  weather: string;
+  temperature: string;
+  humidity: string;
+  windSpeed: string;
+  
+  // Forms
+  fullName: string;
+  phoneNumber: string;
+  barangay: string;
+  location: string;
+  
+  // Messages
+  stayAlert: string;
+  yourBarangay: string;
+  quickActions: string;
+  recentAlerts: string;
+  
+  // Language
+  language: string;
+  english: string;
+  tagalog: string;
+  cebuano: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -115,6 +197,10 @@ const translations: Record<Language, Translations> = {
     systemGuide: 'System Guide',
     manageUsers: 'Manage Users',
     viewReports: 'View Reports',
+    commandCenter: 'Command Center',
+    liveMap: 'Live Map',
+    evacCenters: 'Evacuation Centers',
+    reports: 'Reports',
     
     loading: 'Loading...',
     success: 'Success!',
@@ -122,6 +208,74 @@ const translations: Record<Language, Translations> = {
     cancel: 'Cancel',
     save: 'Save',
     close: 'Close',
+    
+    approve: 'Approve',
+    reject: 'Reject',
+    verify: 'Verify',
+    viewAll: 'View All',
+    edit: 'Edit',
+    delete: 'Delete',
+    search: 'Search',
+    filter: 'Filter',
+    export: 'Export',
+    
+    notifications: 'Notifications',
+    unread: 'unread',
+    markAllRead: 'Mark all read',
+    noNotifications: 'No notifications yet',
+    critical: 'Critical',
+    highPriority: 'High Priority',
+    sosAlert: 'SOS Alert Received!',
+    newHazardReport: 'New Hazard Report',
+    verificationRequest: 'Verification Request',
+    
+    getVerified: 'Get Verified',
+    uploadId: 'Upload Government ID',
+    verificationPending: 'Verification in Progress',
+    verificationApproved: 'Verification Approved',
+    verificationRejected: 'Verification Rejected',
+    verifiedGuardian: 'Verified Guardian',
+    submitForReview: 'Submit for Review',
+    
+    flood: 'Flood',
+    landslide: 'Landslide',
+    earthquake: 'Earthquake',
+    typhoon: 'Typhoon',
+    accident: 'Accident',
+    
+    active: 'Active',
+    resolved: 'Resolved',
+    pending: 'Pending',
+    verified: 'Verified',
+    rejected: 'Rejected',
+    open: 'Open',
+    closed: 'Closed',
+    full: 'Full',
+    standby: 'Standby',
+    
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    
+    weather: 'Weather',
+    temperature: 'Temperature',
+    humidity: 'Humidity',
+    windSpeed: 'Wind Speed',
+    
+    fullName: 'Full Name',
+    phoneNumber: 'Phone Number',
+    barangay: 'Barangay',
+    location: 'Location',
+    
+    stayAlert: 'Stay alert, stay safe',
+    yourBarangay: 'Your Barangay',
+    quickActions: 'Quick Actions',
+    recentAlerts: 'Recent Alerts',
+    
+    language: 'Language',
+    english: 'English',
+    tagalog: 'Tagalog',
+    cebuano: 'Cebuano',
   },
   fil: {
     signIn: 'Mag-login',
@@ -171,6 +325,10 @@ const translations: Record<Language, Translations> = {
     systemGuide: 'Gabay sa Sistema',
     manageUsers: 'Pamahalaan ang mga User',
     viewReports: 'Tingnan ang mga Ulat',
+    commandCenter: 'Command Center',
+    liveMap: 'Live na Mapa',
+    evacCenters: 'Mga Evacuation Center',
+    reports: 'Mga Ulat',
     
     loading: 'Naglo-load...',
     success: 'Tagumpay!',
@@ -178,6 +336,74 @@ const translations: Record<Language, Translations> = {
     cancel: 'Kanselahin',
     save: 'I-save',
     close: 'Isara',
+    
+    approve: 'Aprubahan',
+    reject: 'Tanggihan',
+    verify: 'I-verify',
+    viewAll: 'Tingnan Lahat',
+    edit: 'I-edit',
+    delete: 'Tanggalin',
+    search: 'Maghanap',
+    filter: 'Salain',
+    export: 'I-export',
+    
+    notifications: 'Mga Abiso',
+    unread: 'hindi nabasa',
+    markAllRead: 'Markahan lahat bilang nabasa',
+    noNotifications: 'Wala pang mga abiso',
+    critical: 'Kritikal',
+    highPriority: 'Mataas na Priyoridad',
+    sosAlert: 'Nakatanggap ng SOS Alert!',
+    newHazardReport: 'Bagong Ulat ng Panganib',
+    verificationRequest: 'Kahilingan sa Beripikasyon',
+    
+    getVerified: 'Magpa-verify',
+    uploadId: 'I-upload ang Government ID',
+    verificationPending: 'Isinasagawa ang Beripikasyon',
+    verificationApproved: 'Naaprubahan ang Beripikasyon',
+    verificationRejected: 'Tinanggihan ang Beripikasyon',
+    verifiedGuardian: 'Verified na Guardian',
+    submitForReview: 'Isumite para sa Pagsusuri',
+    
+    flood: 'Baha',
+    landslide: 'Pagguho ng Lupa',
+    earthquake: 'Lindol',
+    typhoon: 'Bagyo',
+    accident: 'Aksidente',
+    
+    active: 'Aktibo',
+    resolved: 'Nalutas',
+    pending: 'Nakabinbin',
+    verified: 'Na-verify',
+    rejected: 'Tinanggihan',
+    open: 'Bukas',
+    closed: 'Sarado',
+    full: 'Puno',
+    standby: 'Standby',
+    
+    low: 'Mababa',
+    medium: 'Katamtaman',
+    high: 'Mataas',
+    
+    weather: 'Panahon',
+    temperature: 'Temperatura',
+    humidity: 'Halumigmig',
+    windSpeed: 'Bilis ng Hangin',
+    
+    fullName: 'Buong Pangalan',
+    phoneNumber: 'Numero ng Telepono',
+    barangay: 'Barangay',
+    location: 'Lokasyon',
+    
+    stayAlert: 'Maging alerto, manatiling ligtas',
+    yourBarangay: 'Ang Iyong Barangay',
+    quickActions: 'Mabilis na Aksyon',
+    recentAlerts: 'Mga Kamakailang Alerto',
+    
+    language: 'Wika',
+    english: 'Ingles',
+    tagalog: 'Tagalog',
+    cebuano: 'Cebuano',
   },
   ceb: {
     signIn: 'Mo-sulod',
@@ -227,6 +453,10 @@ const translations: Record<Language, Translations> = {
     systemGuide: 'Giya sa Sistema',
     manageUsers: 'Pagdumala sa mga User',
     viewReports: 'Tan-awa ang mga Report',
+    commandCenter: 'Command Center',
+    liveMap: 'Live nga Mapa',
+    evacCenters: 'Mga Evacuation Center',
+    reports: 'Mga Taho',
     
     loading: 'Nagkarga...',
     success: 'Malampuson!',
@@ -234,6 +464,74 @@ const translations: Record<Language, Translations> = {
     cancel: 'Kanselahon',
     save: 'I-save',
     close: 'Isira',
+    
+    approve: 'Aprubahan',
+    reject: 'Balibaran',
+    verify: 'I-verify',
+    viewAll: 'Tan-awa Tanan',
+    edit: 'Usbon',
+    delete: 'Tangtangon',
+    search: 'Pangita',
+    filter: 'Salahon',
+    export: 'I-export',
+    
+    notifications: 'Mga Pahibalo',
+    unread: 'wala mabasa',
+    markAllRead: 'Markahi tanan nga nabasa',
+    noNotifications: 'Walay mga pahibalo pa',
+    critical: 'Kritikal',
+    highPriority: 'Taas nga Prayoridad',
+    sosAlert: 'Nakadawat og SOS Alert!',
+    newHazardReport: 'Bag-ong Taho sa Katalagman',
+    verificationRequest: 'Hangyo sa Beripikasyon',
+    
+    getVerified: 'Pagpa-verify',
+    uploadId: 'I-upload ang Government ID',
+    verificationPending: 'Nagpadayon ang Beripikasyon',
+    verificationApproved: 'Giaprubahan ang Beripikasyon',
+    verificationRejected: 'Gisalikway ang Beripikasyon',
+    verifiedGuardian: 'Verified nga Guardian',
+    submitForReview: 'Isumite para sa Pagsusi',
+    
+    flood: 'Baha',
+    landslide: 'Pagdahili sa Yuta',
+    earthquake: 'Linog',
+    typhoon: 'Bagyo',
+    accident: 'Aksidente',
+    
+    active: 'Aktibo',
+    resolved: 'Nasulbad',
+    pending: 'Naghulat',
+    verified: 'Na-verify',
+    rejected: 'Gisalikway',
+    open: 'Bukas',
+    closed: 'Sirado',
+    full: 'Puno',
+    standby: 'Standby',
+    
+    low: 'Ubos',
+    medium: 'Kasarangan',
+    high: 'Taas',
+    
+    weather: 'Panahon',
+    temperature: 'Temperatura',
+    humidity: 'Kahalumigmig',
+    windSpeed: 'Kusog sa Hangin',
+    
+    fullName: 'Tibuok nga Ngalan',
+    phoneNumber: 'Numero sa Telepono',
+    barangay: 'Barangay',
+    location: 'Lokasyon',
+    
+    stayAlert: 'Magbantay, magpabilin nga luwas',
+    yourBarangay: 'Imong Barangay',
+    quickActions: 'Dali nga Aksyon',
+    recentAlerts: 'Bag-ong mga Alerto',
+    
+    language: 'Pinulongan',
+    english: 'Iningles',
+    tagalog: 'Tagalog',
+    cebuano: 'Cebuano',
   },
 };
 
@@ -245,8 +543,30 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'safenav-language';
+
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>(() => {
+    // Load from localStorage on initial mount
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && (stored === 'en' || stored === 'fil' || stored === 'ceb')) {
+      return stored as Language;
+    }
+    return 'en';
+  });
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem(STORAGE_KEY, lang);
+  };
+
+  useEffect(() => {
+    // Sync with localStorage on mount
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && (stored === 'en' || stored === 'fil' || stored === 'ceb')) {
+      setLanguageState(stored as Language);
+    }
+  }, []);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t: translations[language] }}>
