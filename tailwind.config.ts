@@ -39,10 +39,14 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
-        admin: {
-          DEFAULT: "hsl(var(--admin))",
-          foreground: "hsl(var(--admin-foreground))",
-          muted: "hsl(var(--admin-muted))",
+        command: {
+          DEFAULT: "hsl(var(--command))",
+          foreground: "hsl(var(--command-foreground))",
+          muted: "hsl(var(--command-muted))",
+        },
+        ocean: {
+          DEFAULT: "hsl(var(--ocean))",
+          foreground: "hsl(var(--ocean-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
