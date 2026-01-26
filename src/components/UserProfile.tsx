@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { User, LogOut, Loader2, MapPin, Phone as PhoneIcon, CheckCircle, Clock, Map, Phone } from 'lucide-react';
+import { LogOut, Loader2, MapPin, Phone as PhoneIcon, Map, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfiles';
 import { NAVAL_BARANGAYS } from '@/constants/barangays';
 import { toast } from 'sonner';
+import ProfileVerification from '@/components/ProfileVerification';
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -82,8 +82,9 @@ const UserProfile = () => {
     );
   }
 
-  // Type assertion to handle is_verified which might not be in types yet
-  const isVerified = (profile as any)?.is_verified ?? false;
+  // Get verification status from profile
+  const verificationStatus = (profile as any)?.verification_status || 'unverified';
+  const adminNotes = (profile as any)?.admin_notes;
 
   return (
     <div className="min-h-screen bg-secondary/30">
@@ -186,32 +187,15 @@ const UserProfile = () => {
                   <p className="text-sm font-medium text-primary">{profile?.barangay || 'Not set'}</p>
                 </div>
               </div>
-
-              {/* Verification Status */}
-              <div className="flex items-center gap-3">
-                {isVerified ? (
-                  <CheckCircle className="w-4 h-4 text-emerald-600" />
-                ) : (
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                )}
-                <div>
-                  <p className="text-xs text-muted-foreground">Verification Status</p>
-                  {isVerified ? (
-                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="gap-1">
-                      <Clock className="w-3 h-3" />
-                      Pending Verification
-                    </Badge>
-                  )}
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Verification Section */}
+        <ProfileVerification 
+          verificationStatus={verificationStatus}
+          adminNotes={adminNotes}
+        />
 
         {/* Quick Links */}
         <Card className="border-border">
