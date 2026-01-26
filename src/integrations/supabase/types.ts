@@ -154,37 +154,55 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_notes: string | null
           avatar_url: string | null
           barangay: string | null
           created_at: string
           full_name: string
           id: string
+          id_image_url: string | null
           is_verified: boolean
           phone_number: string | null
           updated_at: string
           user_id: string
+          verification_reviewed_at: string | null
+          verification_reviewed_by: string | null
+          verification_status: string | null
+          verification_submitted_at: string | null
         }
         Insert: {
+          admin_notes?: string | null
           avatar_url?: string | null
           barangay?: string | null
           created_at?: string
           full_name: string
           id?: string
+          id_image_url?: string | null
           is_verified?: boolean
           phone_number?: string | null
           updated_at?: string
           user_id: string
+          verification_reviewed_at?: string | null
+          verification_reviewed_by?: string | null
+          verification_status?: string | null
+          verification_submitted_at?: string | null
         }
         Update: {
+          admin_notes?: string | null
           avatar_url?: string | null
           barangay?: string | null
           created_at?: string
           full_name?: string
           id?: string
+          id_image_url?: string | null
           is_verified?: boolean
           phone_number?: string | null
           updated_at?: string
           user_id?: string
+          verification_reviewed_at?: string | null
+          verification_reviewed_by?: string | null
+          verification_status?: string | null
+          verification_submitted_at?: string | null
         }
         Relationships: []
       }
