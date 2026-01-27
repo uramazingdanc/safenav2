@@ -1,42 +1,93 @@
-import { useState } from 'react';
-import { AlertTriangle, Camera, MapPin, Send, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { AlertTriangle, Camera, Send, Loader2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateHazardReport } from '@/hooks/useHazardReports';
+import { NAVAL_BARANGAYS } from '@/constants/barangays';
+import MapLocationPicker from '@/components/MapLocationPicker';
+
+const HAZARD_TYPES = [
+  { value: 'flooding', label: 'Flooding' },
+  { value: 'landslide', label: 'Landslide' },
+  { value: 'road_damage', label: 'Road Damage' },
+  { value: 'road_obstruction', label: 'Road Obstruction' },
+];
 
 const ReportHazard = () => {
   const [hazardType, setHazardType] = useState('');
+  const [barangay, setBarangay] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const { t } = useLanguage();
   const { toast } = useToast();
   const createReport = useCreateHazardReport();
 
-  const hazardTypes = [
-    { value: 'flood', label: 'Flood / Rising Water' },
-    { value: 'landslide', label: 'Landslide / Soil Erosion' },
-    { value: 'fire', label: 'Fire / Smoke' },
-    { value: 'road', label: 'Road Damage / Obstruction' },
-    { value: 'structure', label: 'Building Damage' },
-    { value: 'power', label: 'Downed Power Lines' },
-    { value: 'other', label: 'Other Hazard' },
-  ];
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: t.error,
+          description: 'Please select an image file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: t.error,
+          description: 'Image must be less than 10MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!hazardType || !location) {
+    if (!hazardType || !barangay) {
       toast({
         title: t.error,
-        description: 'Please fill in all required fields.',
+        description: 'Please select hazard type and barangay.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!photoFile) {
+      toast({
+        title: t.error,
+        description: 'Please take or upload a photo as evidence.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!coordinates) {
+      toast({
+        title: t.error,
+        description: 'Please select the location on the map or enter coordinates.',
         variant: 'destructive',
       });
       return;
@@ -46,52 +97,28 @@ const ReportHazard = () => {
       await createReport.mutateAsync({
         hazard_type: hazardType,
         description,
-        location,
-        latitude,
-        longitude,
+        location: barangay,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
       });
 
       toast({
         title: t.success,
-        description: 'Hazard report submitted successfully. Thank you for helping keep our community safe!',
+        description: 'Hazard report submitted successfully. It will be reviewed by administrators.',
       });
       
       // Reset form
       setHazardType('');
+      setBarangay('');
       setDescription('');
-      setLocation('');
-      setLatitude(null);
-      setLongitude(null);
+      setCoordinates(null);
+      handleRemovePhoto();
     } catch (error) {
       toast({
         title: t.error,
         description: 'Failed to submit report. Please try again.',
         variant: 'destructive',
       });
-    }
-  };
-
-  const handleUseLocation = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLatitude(latitude);
-          setLongitude(longitude);
-          setLocation(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-          toast({
-            title: t.success,
-            description: 'Location detected!',
-          });
-        },
-        () => {
-          toast({
-            title: t.error,
-            description: 'Could not get location.',
-            variant: 'destructive',
-          });
-        }
-      );
     }
   };
 
@@ -113,14 +140,15 @@ const ReportHazard = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Hazard Type */}
             <div className="space-y-2">
-              <Label>{t.hazardType}</Label>
+              <Label>{t.hazardType} *</Label>
               <Select value={hazardType} onValueChange={setHazardType} disabled={createReport.isPending}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select hazard type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {hazardTypes.map((type) => (
+                  {HAZARD_TYPES.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
                     </SelectItem>
@@ -129,39 +157,83 @@ const ReportHazard = () => {
               </Select>
             </div>
 
+            {/* Barangay */}
             <div className="space-y-2">
-              <Label>Location</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter location or address"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="flex-1"
-                  disabled={createReport.isPending}
-                />
-                <Button type="button" variant="outline" onClick={handleUseLocation} disabled={createReport.isPending}>
-                  <MapPin className="w-4 h-4" />
-                </Button>
-              </div>
+              <Label>Barangay *</Label>
+              <Select value={barangay} onValueChange={setBarangay} disabled={createReport.isPending}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select barangay" />
+                </SelectTrigger>
+                <SelectContent>
+                  {NAVAL_BARANGAYS.map((brgy) => (
+                    <SelectItem key={brgy} value={brgy}>
+                      {brgy}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Location Picker */}
+            <MapLocationPicker
+              coordinates={coordinates}
+              onCoordinatesChange={setCoordinates}
+              markerColor="#dc2626"
+              label="Exact Location *"
+              compact
+            />
+
+            {/* Description */}
             <div className="space-y-2">
-              <Label>{t.description}</Label>
+              <Label>{t.description} (Optional)</Label>
               <Textarea
                 placeholder="Describe the hazard in detail..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={4}
+                rows={3}
                 disabled={createReport.isPending}
               />
             </div>
 
+            {/* Photo Evidence */}
             <div className="space-y-2">
-              <Label>Photo (Optional)</Label>
-              <div className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/50 transition-colors">
-                <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Tap to add photo</p>
-              </div>
+              <Label>Photo Evidence *</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+              
+              {photoPreview ? (
+                <div className="relative">
+                  <img 
+                    src={photoPreview} 
+                    alt="Evidence" 
+                    className="w-full h-48 object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8"
+                    onClick={handleRemovePhoto}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div 
+                  className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm font-medium">Take Photo</p>
+                  <p className="text-xs text-muted-foreground">Tap to capture or upload evidence</p>
+                </div>
+              )}
             </div>
 
             <Button type="submit" className="w-full" size="lg" disabled={createReport.isPending}>

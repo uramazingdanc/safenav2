@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface VerificationSubmission {
-  file: File;
+  idFile: File;
+  selfieFile: File;
 }
 
 interface VerificationReview {
@@ -11,36 +12,42 @@ interface VerificationReview {
   adminNotes?: string;
 }
 
-// Upload ID and submit for verification
+// Upload ID and selfie, then submit for verification
 export const useSubmitVerification = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ file }: VerificationSubmission) => {
+    mutationFn: async ({ idFile, selfieFile }: VerificationSubmission) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Upload to storage bucket
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      // Upload ID image
+      const idExt = idFile.name.split('.').pop();
+      const idFileName = `${user.id}/${Date.now()}_id.${idExt}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: idUploadError } = await supabase.storage
         .from('verification_ids')
-        .upload(fileName, file, { upsert: true });
+        .upload(idFileName, idFile, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (idUploadError) throw idUploadError;
 
-      // Get the URL
-      const { data: urlData } = supabase.storage
+      // Upload selfie image
+      const selfieExt = selfieFile.name.split('.').pop();
+      const selfieFileName = `${user.id}/${Date.now()}_selfie.${selfieExt}`;
+
+      const { error: selfieUploadError } = await supabase.storage
         .from('verification_ids')
-        .getPublicUrl(fileName);
+        .upload(selfieFileName, selfieFile, { upsert: true });
+
+      if (selfieUploadError) throw selfieUploadError;
 
       // Update profile with pending status
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           verification_status: 'pending',
-          id_image_url: fileName,
+          id_image_url: idFileName,
+          selfie_image_url: selfieFileName,
           verification_submitted_at: new Date().toISOString(),
           admin_notes: null
         })
@@ -91,6 +98,36 @@ export const useVerificationImage = (imagePath: string | null) => {
   });
 };
 
+// Admin: Get both verification images (ID and selfie)
+export const useVerificationImages = (idPath: string | null, selfiePath: string | null) => {
+  return useQuery({
+    queryKey: ['verification-images', idPath, selfiePath],
+    queryFn: async () => {
+      const results: { idUrl: string | null; selfieUrl: string | null } = {
+        idUrl: null,
+        selfieUrl: null
+      };
+
+      if (idPath) {
+        const { data } = await supabase.storage
+          .from('verification_ids')
+          .createSignedUrl(idPath, 3600);
+        results.idUrl = data?.signedUrl || null;
+      }
+
+      if (selfiePath) {
+        const { data } = await supabase.storage
+          .from('verification_ids')
+          .createSignedUrl(selfiePath, 3600);
+        results.selfieUrl = data?.signedUrl || null;
+      }
+
+      return results;
+    },
+    enabled: !!idPath || !!selfiePath
+  });
+};
+
 // Admin: Review verification (approve/reject)
 export const useReviewVerification = () => {
   const queryClient = useQueryClient();
@@ -100,6 +137,13 @@ export const useReviewVerification = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Get current profile data before update
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id_image_url, selfie_image_url')
+        .eq('user_id', userId)
+        .single();
+
       const updates: Record<string, unknown> = {
         verification_status: approved ? 'verified' : 'rejected',
         is_verified: approved,
@@ -108,9 +152,10 @@ export const useReviewVerification = () => {
         admin_notes: adminNotes || null
       };
 
-      // If rejected, clear the image URL so user can try again
+      // If rejected, clear the image URLs so user can try again
       if (!approved) {
         updates.id_image_url = null;
+        updates.selfie_image_url = null;
       }
 
       const { error } = await supabase
@@ -120,18 +165,16 @@ export const useReviewVerification = () => {
 
       if (error) throw error;
 
-      // If rejected, also delete the image from storage
-      if (!approved) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id_image_url')
-          .eq('user_id', userId)
-          .single();
-
-        if (profile?.id_image_url) {
+      // If rejected, also delete the images from storage
+      if (!approved && profile) {
+        const filesToDelete: string[] = [];
+        if (profile.id_image_url) filesToDelete.push(profile.id_image_url);
+        if (profile.selfie_image_url) filesToDelete.push(profile.selfie_image_url);
+        
+        if (filesToDelete.length > 0) {
           await supabase.storage
             .from('verification_ids')
-            .remove([profile.id_image_url]);
+            .remove(filesToDelete);
         }
       }
 
