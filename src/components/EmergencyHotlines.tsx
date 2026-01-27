@@ -31,7 +31,7 @@ const EmergencyHotlines = () => {
   };
 
   return (
-    <div className="min-h-screen bg-secondary/30">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-destructive text-destructive-foreground p-4 pb-6">
         <div className="flex items-center gap-3">
@@ -45,21 +45,21 @@ const EmergencyHotlines = () => {
 
       <div className="p-4 space-y-6">
         {/* Emergency Services */}
-        <Card className="border-border">
+        <Card className="border-border bg-card shadow-lg">
           <CardContent className="p-0">
-            <div className="p-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-primary">Emergency Services</h2>
+            <div className="p-4 border-b border-border bg-primary/5">
+              <h2 className="text-lg font-semibold text-foreground">Emergency Services</h2>
             </div>
             <div className="divide-y divide-border">
               {emergencyServices.map((service) => (
                 <div
                   key={service.name + service.number}
-                  className="flex items-center justify-between p-4 hover:bg-secondary/50 cursor-pointer transition-colors"
+                  className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
                   onClick={() => handleCall(service.number)}
                 >
                   <div>
-                    <p className="font-medium text-primary">{service.name}</p>
-                    <p className="text-sm text-primary/70">{service.number}</p>
+                    <p className="font-medium text-foreground">{service.name}</p>
+                    <p className="text-sm text-muted-foreground">{service.number}</p>
                   </div>
                   <Button variant="outline" size="sm" className="gap-1">
                     <Phone className="w-3 h-3" />
@@ -72,21 +72,21 @@ const EmergencyHotlines = () => {
         </Card>
 
         {/* National Hotlines */}
-        <Card className="border-border">
+        <Card className="border-border bg-card shadow-lg">
           <CardContent className="p-0">
-            <div className="p-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-primary">National Hotlines</h2>
+            <div className="p-4 border-b border-border bg-primary/5">
+              <h2 className="text-lg font-semibold text-foreground">National Hotlines</h2>
             </div>
             <div className="divide-y divide-border">
               {nationalHotlines.map((hotline) => (
                 <div
                   key={hotline.name}
-                  className="flex items-center justify-between p-4 hover:bg-secondary/50 cursor-pointer transition-colors"
+                  className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
                   onClick={() => handleCall(hotline.number)}
                 >
                   <div>
-                    <p className="font-medium text-primary">{hotline.name}</p>
-                    <p className="text-sm text-primary/70">{hotline.number}</p>
+                    <p className="font-medium text-foreground">{hotline.name}</p>
+                    <p className="text-sm text-muted-foreground">{hotline.number}</p>
                   </div>
                   <Button variant="outline" size="sm" className="gap-1">
                     <Phone className="w-3 h-3" />

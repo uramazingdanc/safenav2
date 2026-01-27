@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { X, MapPin, AlertTriangle, Loader2, Radio } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Loader2, Radio } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,16 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateHazard } from '@/hooks/useHazards';
 import { useToast } from '@/hooks/use-toast';
-import Map from 'ol/Map';
-import View from 'ol/View';
-import TileLayer from 'ol/layer/Tile';
-import OSM from 'ol/source/OSM';
-import { fromLonLat, toLonLat } from 'ol/proj';
-import Feature from 'ol/Feature';
-import Point from 'ol/geom/Point';
-import VectorLayer from 'ol/layer/Vector';
-import VectorSource from 'ol/source/Vector';
-import { Style, Circle, Fill, Stroke } from 'ol/style';
+import { NAVAL_BARANGAYS } from '@/constants/barangays';
+import MapLocationPicker from '@/components/MapLocationPicker';
 
 interface HazardModalProps {
   open: boolean;
@@ -26,139 +18,58 @@ interface HazardModalProps {
 }
 
 const HAZARD_TYPES = [
-  { value: 'flood', label: 'Flood', icon: '🌊' },
+  { value: 'flooding', label: 'Flooding', icon: '🌊' },
   { value: 'landslide', label: 'Landslide', icon: '⛰️' },
-  { value: 'fire', label: 'Fire', icon: '🔥' },
-  { value: 'accident', label: 'Road Accident', icon: '🚗' },
-  { value: 'storm', label: 'Storm/Typhoon', icon: '🌀' },
-  { value: 'earthquake', label: 'Earthquake', icon: '📳' },
+  { value: 'road_damage', label: 'Road Damage', icon: '🚧' },
+  { value: 'road_obstruction', label: 'Road Obstruction', icon: '🚗' },
 ];
 
 const SEVERITY_LEVELS = [
-  { value: 'low', label: 'Low', color: 'text-emerald-400' },
-  { value: 'medium', label: 'Medium', color: 'text-yellow-400' },
-  { value: 'high', label: 'High', color: 'text-orange-400' },
-  { value: 'critical', label: 'Critical', color: 'text-rose-400' },
+  { value: 'low', label: 'Low', color: 'text-yellow-400' },
+  { value: 'medium', label: 'Medium', color: 'text-orange-400' },
+  { value: 'high', label: 'High', color: 'text-red-400' },
+  { value: 'critical', label: 'Critical', color: 'text-red-600' },
 ];
 
 const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<Map | null>(null);
-  const markerSourceRef = useRef<VectorSource | null>(null);
   const { toast } = useToast();
   const createHazard = useCreateHazard();
 
   const [formData, setFormData] = useState({
     type: '',
     severity: '',
-    location: '',
+    barangay: '',
     description: '',
-    latitude: initialCoords?.lat || 11.5601,
-    longitude: initialCoords?.lng || 124.3949,
   });
-
-  // Initialize map
-  useEffect(() => {
-    if (!open || !mapRef.current || mapInstanceRef.current) return;
-
-    const markerSource = new VectorSource();
-    markerSourceRef.current = markerSource;
-
-    const markerLayer = new VectorLayer({
-      source: markerSource,
-      style: new Style({
-        image: new Circle({
-          radius: 10,
-          fill: new Fill({ color: '#e11d48' }),
-          stroke: new Stroke({ color: '#fff', width: 3 }),
-        }),
-      }),
-    });
-
-    const map = new Map({
-      target: mapRef.current,
-      layers: [
-        new TileLayer({ source: new OSM() }),
-        markerLayer,
-      ],
-      view: new View({
-        center: fromLonLat([formData.longitude, formData.latitude]),
-        zoom: 14,
-      }),
-    });
-
-    // Add initial marker
-    const marker = new Feature({
-      geometry: new Point(fromLonLat([formData.longitude, formData.latitude])),
-    });
-    markerSource.addFeature(marker);
-
-    // Click to place marker
-    map.on('click', (evt) => {
-      const coords = toLonLat(evt.coordinate);
-      setFormData(prev => ({
-        ...prev,
-        longitude: coords[0],
-        latitude: coords[1],
-      }));
-
-      markerSource.clear();
-      const newMarker = new Feature({
-        geometry: new Point(evt.coordinate),
-      });
-      markerSource.addFeature(newMarker);
-    });
-
-    mapInstanceRef.current = map;
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.setTarget(undefined);
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [open]);
-
-  // Update marker when initialCoords change
-  useEffect(() => {
-    if (initialCoords && markerSourceRef.current && mapInstanceRef.current) {
-      setFormData(prev => ({
-        ...prev,
-        latitude: initialCoords.lat,
-        longitude: initialCoords.lng,
-      }));
-
-      markerSourceRef.current.clear();
-      const marker = new Feature({
-        geometry: new Point(fromLonLat([initialCoords.lng, initialCoords.lat])),
-      });
-      markerSourceRef.current.addFeature(marker);
-
-      mapInstanceRef.current.getView().setCenter(fromLonLat([initialCoords.lng, initialCoords.lat]));
-    }
-  }, [initialCoords]);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(
+    initialCoords || null
+  );
 
   const handleClose = () => {
     setFormData({
       type: '',
       severity: '',
-      location: '',
+      barangay: '',
       description: '',
-      latitude: 11.5601,
-      longitude: 124.3949,
     });
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.setTarget(undefined);
-      mapInstanceRef.current = null;
-    }
+    setCoordinates(null);
     onClose();
   };
 
   const handleSubmit = async (broadcast: boolean = false) => {
-    if (!formData.type || !formData.severity || !formData.location) {
+    if (!formData.type || !formData.severity || !formData.barangay) {
       toast({
         title: 'Missing Fields',
         description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!coordinates) {
+      toast({
+        title: 'Missing Location',
+        description: 'Please select a location on the map or enter coordinates.',
         variant: 'destructive',
       });
       return;
@@ -168,10 +79,10 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
       await createHazard.mutateAsync({
         type: formData.type,
         severity: formData.severity as 'low' | 'medium' | 'high' | 'critical',
-        location: formData.location,
+        location: formData.barangay,
         description: formData.description,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
         status: 'active',
       });
 
@@ -194,7 +105,7 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl bg-slate-900 border-slate-700 text-white p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl bg-slate-900 border-slate-700 text-white p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
         <DialogHeader className="p-6 pb-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
@@ -205,17 +116,15 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
         </DialogHeader>
 
         <div className="p-6 space-y-4">
-          {/* Mini Map */}
+          {/* Location Picker */}
           <div className="space-y-2">
-            <Label className="text-slate-300">Click Map to Set Location</Label>
-            <div 
-              ref={mapRef} 
-              className="w-full h-48 rounded-lg overflow-hidden border border-slate-700"
+            <MapLocationPicker
+              coordinates={coordinates}
+              onCoordinatesChange={setCoordinates}
+              markerColor="#dc2626"
+              label="Location *"
+              compact
             />
-            <p className="text-xs text-slate-500">
-              <MapPin className="w-3 h-3 inline mr-1" />
-              {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
-            </p>
           </div>
 
           {/* Form Grid */}
@@ -254,17 +163,23 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-slate-300">Location Description *</Label>
-            <Input
-              value={formData.location}
-              onChange={(e) => setFormData(p => ({ ...p, location: e.target.value }))}
-              placeholder="e.g., Near Brgy. Hall, Caraycaray"
-              className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
-            />
+            <Label className="text-slate-300">Barangay *</Label>
+            <Select value={formData.barangay} onValueChange={(v) => setFormData(p => ({ ...p, barangay: v }))}>
+              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                <SelectValue placeholder="Select barangay" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                {NAVAL_BARANGAYS.map(brgy => (
+                  <SelectItem key={brgy} value={brgy} className="text-white hover:bg-slate-700">
+                    {brgy}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-slate-300">Description</Label>
+            <Label className="text-slate-300">Description (Optional)</Label>
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}

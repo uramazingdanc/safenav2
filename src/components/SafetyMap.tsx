@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,19 +25,29 @@ import { Style, Circle, Fill, Stroke } from 'ol/style';
 import Overlay from 'ol/Overlay';
 import 'ol/ol.css';
 
+// Severity-based hazard styles
+const getHazardStyle = (severity: string) => {
+  const colorMap: Record<string, string> = {
+    low: '#eab308',      // Yellow
+    medium: '#f97316',   // Orange
+    high: '#dc2626',     // Red
+    critical: '#991b1b', // Dark Red
+  };
+  
+  return new Style({
+    image: new Circle({
+      radius: 12,
+      fill: new Fill({ color: colorMap[severity] || '#dc2626' }),
+      stroke: new Stroke({ color: '#ffffff', width: 3 }),
+    }),
+  });
+};
+
 // Marker styles
 const userStyle = new Style({
   image: new Circle({
     radius: 10,
     fill: new Fill({ color: '#2563eb' }),
-    stroke: new Stroke({ color: '#ffffff', width: 3 }),
-  }),
-});
-
-const hazardStyle = new Style({
-  image: new Circle({
-    radius: 10,
-    fill: new Fill({ color: '#dc2626' }),
     stroke: new Stroke({ color: '#ffffff', width: 3 }),
   }),
 });
@@ -64,6 +74,7 @@ const SafetyMap = () => {
   const [destination, setDestination] = useState('');
   const [route, setRoute] = useState<[number, number][] | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
   const { t } = useLanguage();
   const { toast } = useToast();
 
@@ -143,10 +154,16 @@ const SafetyMap = () => {
         if (popupRef.current) {
           let content = '';
           if (featureType === 'hazard') {
+            const severityColors: Record<string, string> = {
+              low: 'text-yellow-500',
+              medium: 'text-orange-500',
+              high: 'text-red-500',
+              critical: 'text-red-700',
+            };
             content = `<div class="text-center p-2">
               <span class="text-lg">⚠️</span><br/>
-              <strong class="text-red-600">${type}</strong>
-              <p class="text-xs capitalize">Severity: ${severity}</p>
+              <strong class="${severityColors[severity] || 'text-red-600'}">${type}</strong>
+              <p class="text-xs capitalize font-semibold ${severityColors[severity]}">Severity: ${severity}</p>
               <p class="text-xs">${location}</p>
             </div>`;
           } else if (featureType === 'evac') {
@@ -182,7 +199,7 @@ const SafetyMap = () => {
     };
   }, []);
 
-  // Update hazard markers when data changes
+  // Update hazard markers when data changes (with severity-based colors)
   useEffect(() => {
     if (!hazardLayerRef.current) return;
 
@@ -201,7 +218,7 @@ const SafetyMap = () => {
           location: hazard.location,
           featureType: 'hazard',
         });
-        feature.setStyle(hazardStyle);
+        feature.setStyle(getHazardStyle(hazard.severity));
         source.addFeature(feature);
       }
     });
@@ -360,6 +377,12 @@ const SafetyMap = () => {
 
   const isLoading = hazardsLoading || evacLoading;
 
+  // Count hazards by severity
+  const hazardsBySeverity = hazards.reduce((acc, h) => {
+    acc[h.severity] = (acc[h.severity] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
   return (
     <div className="flex flex-col h-full min-h-[600px]">
       {/* Weather Card */}
@@ -416,31 +439,75 @@ const SafetyMap = () => {
         </CardContent>
       </Card>
 
-      {/* Map Legend */}
-      <div className="mx-4 mb-2 flex flex-wrap gap-3 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-blue-600" />
-          <span>Your Location</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-red-600" />
-          <span>Hazards ({hazards.length})</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-green-600" />
-          <span>Evac Centers ({evacCenters.length})</span>
-        </div>
-        {isLoading && (
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span>Loading...</span>
-          </div>
-        )}
-      </div>
-
-      {/* Map Container */}
+      {/* Map Container with Floating Legend */}
       <div className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden shadow-lg border min-h-[350px] relative">
         <div ref={mapRef} className="w-full h-full min-h-[350px]" />
+        
+        {/* Floating Legend */}
+        <div className={`absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 transition-all ${showLegend ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold flex items-center gap-1">
+              <Info className="w-4 h-4" />
+              Map Legend
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={() => setShowLegend(false)}
+            >
+              ×
+            </Button>
+          </div>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow" />
+              <span>Your Location</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-green-600 border-2 border-white shadow" />
+              <span>Evacuation Center ({evacCenters.length})</span>
+            </div>
+            <div className="border-t border-muted my-2" />
+            <p className="font-medium text-muted-foreground">Hazard Severity:</p>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" />
+              <span>Low ({hazardsBySeverity.low || 0})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" />
+              <span>Medium ({hazardsBySeverity.medium || 0})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" />
+              <span>High ({hazardsBySeverity.high || 0})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" />
+              <span>Critical ({hazardsBySeverity.critical || 0})</span>
+            </div>
+          </div>
+          {isLoading && (
+            <div className="flex items-center gap-1 text-muted-foreground mt-2">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="text-xs">Loading...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Toggle Legend Button (when hidden) */}
+        {!showLegend && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="absolute bottom-4 left-4 shadow-lg"
+            onClick={() => setShowLegend(true)}
+          >
+            <Info className="w-4 h-4 mr-1" />
+            Legend
+          </Button>
+        )}
+        
         <div 
           ref={popupRef} 
           className="ol-popup bg-white rounded-lg shadow-lg border"

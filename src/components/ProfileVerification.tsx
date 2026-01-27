@@ -8,11 +8,13 @@ import {
   Camera,
   Loader2,
   AlertTriangle,
-  FileImage
+  FileImage,
+  User
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -30,39 +32,60 @@ interface ProfileVerificationProps {
 
 const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerificationProps) => {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [idPreview, setIdPreview] = useState<string | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const idInputRef = useRef<HTMLInputElement>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
   
   const submitVerification = useSubmitVerification();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIdSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('Please select an image file');
         return;
       }
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('Image must be less than 5MB');
         return;
       }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      setIdFile(file);
+      setIdPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSelfieSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be less than 5MB');
+        return;
+      }
+      setSelfieFile(file);
+      setSelfiePreview(URL.createObjectURL(file));
     }
   };
 
   const handleSubmit = async () => {
-    if (!selectedFile) return;
+    if (!idFile || !selfieFile) {
+      toast.error('Please upload both your ID and selfie');
+      return;
+    }
 
     try {
-      await submitVerification.mutateAsync({ file: selectedFile });
-      toast.success('ID submitted for verification');
-      setIsUploadOpen(false);
-      setSelectedFile(null);
-      setPreviewUrl(null);
+      await submitVerification.mutateAsync({ 
+        idFile, 
+        selfieFile 
+      });
+      toast.success('Verification submitted successfully');
+      handleClose();
     } catch (error) {
       toast.error('Failed to submit verification');
     }
@@ -70,8 +93,10 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
 
   const handleClose = () => {
     setIsUploadOpen(false);
-    setSelectedFile(null);
-    setPreviewUrl(null);
+    setIdFile(null);
+    setIdPreview(null);
+    setSelfieFile(null);
+    setSelfiePreview(null);
   };
 
   // Render based on verification status
@@ -118,7 +143,7 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
                 </Badge>
               </div>
               <p className="text-sm text-amber-600">
-                Your ID is being reviewed. Please wait for admin approval.
+                Your ID and selfie are being reviewed. Please wait for admin approval.
               </p>
             </div>
           </div>
@@ -162,15 +187,18 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
           </CardContent>
         </Card>
 
-        <UploadDialog 
+        <VerificationDialog 
           isOpen={isUploadOpen}
           onClose={handleClose}
-          selectedFile={selectedFile}
-          previewUrl={previewUrl}
-          fileInputRef={fileInputRef}
-          onFileSelect={handleFileSelect}
+          idPreview={idPreview}
+          selfiePreview={selfiePreview}
+          idInputRef={idInputRef}
+          selfieInputRef={selfieInputRef}
+          onIdSelect={handleIdSelect}
+          onSelfieSelect={handleSelfieSelect}
           onSubmit={handleSubmit}
           isSubmitting={submitVerification.isPending}
+          canSubmit={!!idFile && !!selfieFile}
         />
       </>
     );
@@ -188,107 +216,142 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
             <div className="flex-1">
               <h3 className="font-semibold text-primary mb-1">Get Verified</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                Verify your identity to unlock full access to SafeNav features and become a trusted guardian.
+                Verify your identity with a government ID and face selfie to unlock full SafeNav features.
               </p>
               <Button onClick={() => setIsUploadOpen(true)} className="bg-primary hover:bg-primary/90">
                 <Upload className="w-4 h-4 mr-2" />
-                Upload Government ID
+                Start Verification
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <UploadDialog 
+      <VerificationDialog 
         isOpen={isUploadOpen}
         onClose={handleClose}
-        selectedFile={selectedFile}
-        previewUrl={previewUrl}
-        fileInputRef={fileInputRef}
-        onFileSelect={handleFileSelect}
+        idPreview={idPreview}
+        selfiePreview={selfiePreview}
+        idInputRef={idInputRef}
+        selfieInputRef={selfieInputRef}
+        onIdSelect={handleIdSelect}
+        onSelfieSelect={handleSelfieSelect}
         onSubmit={handleSubmit}
         isSubmitting={submitVerification.isPending}
+        canSubmit={!!idFile && !!selfieFile}
       />
     </>
   );
 };
 
-interface UploadDialogProps {
+interface VerificationDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedFile: File | null;
-  previewUrl: string | null;
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  idPreview: string | null;
+  selfiePreview: string | null;
+  idInputRef: React.RefObject<HTMLInputElement>;
+  selfieInputRef: React.RefObject<HTMLInputElement>;
+  onIdSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSelfieSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
+  canSubmit: boolean;
 }
 
-const UploadDialog = ({
+const VerificationDialog = ({
   isOpen,
   onClose,
-  selectedFile,
-  previewUrl,
-  fileInputRef,
-  onFileSelect,
+  idPreview,
+  selfiePreview,
+  idInputRef,
+  selfieInputRef,
+  onIdSelect,
+  onSelfieSelect,
   onSubmit,
-  isSubmitting
-}: UploadDialogProps) => {
+  isSubmitting,
+  canSubmit
+}: VerificationDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
-            Upload Government ID
+            Identity Verification
           </DialogTitle>
           <DialogDescription>
-            Upload a clear photo of your valid government-issued ID for verification.
+            Upload your government ID and a face selfie for verification.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Upload Area */}
-          <div 
-            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-              previewUrl 
-                ? 'border-primary bg-primary/5' 
-                : 'border-muted-foreground/25 hover:border-primary/50'
-            }`}
-            onClick={() => fileInputRef.current?.click()}
-          >
+          {/* Government ID Upload */}
+          <div className="space-y-2">
+            <Label className="font-medium">1. Government ID</Label>
             <input
-              ref={fileInputRef}
+              ref={idInputRef}
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={onFileSelect}
+              onChange={onIdSelect}
             />
-            
-            {previewUrl ? (
-              <div className="space-y-3">
+            <div 
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
+                idPreview 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-muted-foreground/25 hover:border-primary/50'
+              }`}
+              onClick={() => idInputRef.current?.click()}
+            >
+              {idPreview ? (
                 <img 
-                  src={previewUrl} 
+                  src={idPreview} 
                   alt="ID Preview" 
-                  className="max-h-48 mx-auto rounded-lg object-contain"
+                  className="max-h-32 mx-auto rounded-lg object-contain"
                 />
-                <p className="text-sm text-muted-foreground">
-                  Click to change image
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                  <Camera className="w-8 h-8 text-muted-foreground" />
+              ) : (
+                <div className="py-2">
+                  <FileImage className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm font-medium">Upload Government ID</p>
+                  <p className="text-xs text-muted-foreground">Driver's License, Passport, etc.</p>
                 </div>
-                <div>
-                  <p className="font-medium">Click to upload</p>
-                  <p className="text-sm text-muted-foreground">
-                    PNG, JPG up to 5MB
-                  </p>
+              )}
+            </div>
+          </div>
+
+          {/* Selfie Upload */}
+          <div className="space-y-2">
+            <Label className="font-medium">2. Face Selfie</Label>
+            <input
+              ref={selfieInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={onSelfieSelect}
+            />
+            <div 
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
+                selfiePreview 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-muted-foreground/25 hover:border-primary/50'
+              }`}
+              onClick={() => selfieInputRef.current?.click()}
+            >
+              {selfiePreview ? (
+                <img 
+                  src={selfiePreview} 
+                  alt="Selfie Preview" 
+                  className="max-h-32 mx-auto rounded-lg object-contain"
+                />
+              ) : (
+                <div className="py-2">
+                  <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm font-medium">Take a Selfie</p>
+                  <p className="text-xs text-muted-foreground">Clear photo of your face</p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Guidelines */}
@@ -298,9 +361,9 @@ const UploadDialog = ({
               <div className="text-sm text-amber-800">
                 <p className="font-medium mb-1">Guidelines:</p>
                 <ul className="list-disc list-inside space-y-0.5 text-xs">
-                  <li>Use a valid government ID (Driver's License, Passport, etc.)</li>
-                  <li>Ensure all text is clearly visible</li>
-                  <li>Avoid glare or shadows</li>
+                  <li>Ensure your face in the selfie matches the ID photo</li>
+                  <li>All text on ID must be clearly visible</li>
+                  <li>Good lighting, no shadows or glare</li>
                 </ul>
               </div>
             </div>
@@ -313,7 +376,7 @@ const UploadDialog = ({
             </Button>
             <Button 
               className="flex-1" 
-              disabled={!selectedFile || isSubmitting}
+              disabled={!canSubmit || isSubmitting}
               onClick={onSubmit}
             >
               {isSubmitting ? (
@@ -323,7 +386,7 @@ const UploadDialog = ({
                 </>
               ) : (
                 <>
-                  <FileImage className="w-4 h-4 mr-2" />
+                  <Camera className="w-4 h-4 mr-2" />
                   Submit for Review
                 </>
               )}

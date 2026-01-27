@@ -202,6 +202,7 @@ export type Database = {
           id_image_url: string | null
           is_verified: boolean
           phone_number: string | null
+          selfie_image_url: string | null
           updated_at: string
           user_id: string
           verification_reviewed_at: string | null
@@ -219,6 +220,7 @@ export type Database = {
           id_image_url?: string | null
           is_verified?: boolean
           phone_number?: string | null
+          selfie_image_url?: string | null
           updated_at?: string
           user_id: string
           verification_reviewed_at?: string | null
@@ -236,6 +238,7 @@ export type Database = {
           id_image_url?: string | null
           is_verified?: boolean
           phone_number?: string | null
+          selfie_image_url?: string | null
           updated_at?: string
           user_id?: string
           verification_reviewed_at?: string | null
