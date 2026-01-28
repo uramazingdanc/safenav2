@@ -20,7 +20,7 @@ const UserDashboard = () => {
     {
       title: 'Find Route',
       icon: Navigation,
-      path: '/map',
+      path: '/find-route',
       variant: 'outline' as const,
     },
     {

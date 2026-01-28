@@ -15,6 +15,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import UserLayout from "./components/UserLayout";
 import UserDashboard from "./components/UserDashboard";
 import MapPage from "./pages/MapPage";
+import FindRoutePage from "./pages/FindRoutePage";
 import ReportHazard from "./components/ReportHazard";
 import EmergencyHotlines from "./components/EmergencyHotlines";
 import UserProfile from "./components/UserProfile";
@@ -54,6 +55,7 @@ const App = () => (
               }>
                 <Route path="/dashboard" element={<UserDashboard />} />
                 <Route path="/map" element={<MapPage />} />
+                <Route path="/find-route" element={<FindRoutePage />} />
                 <Route path="/report" element={<ReportHazard />} />
                 <Route path="/hotlines" element={<EmergencyHotlines />} />
                 <Route path="/help" element={<HelpPage />} />
