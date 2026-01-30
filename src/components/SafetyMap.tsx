@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, Navigation, Loader2, Info, Route, X, Check } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Info, Route, X, Check, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -8,6 +8,7 @@ import { useActiveHazards } from '@/hooks/useHazards';
 import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
 import WeatherCard from '@/components/WeatherCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
 
 // OpenLayers imports
 import OLMap from 'ol/Map';
@@ -20,20 +21,21 @@ import { fromLonLat, toLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import LineString from 'ol/geom/LineString';
-import { Style, Circle, Fill, Stroke, Text as OLText, Icon } from 'ol/style';
+import { Style, Circle, Fill, Stroke, Text as OLText } from 'ol/style';
 import Overlay from 'ol/Overlay';
 import 'ol/ol.css';
+
+// Hazard types - Updated to match requirements
+const HAZARD_TYPES = ['flooding', 'landslide', 'road_damage', 'road_obstruction', 'other'];
 
 // Emoji mapping for hazard types
 const getHazardEmoji = (type: string): string => {
   const typeNormalized = type.toLowerCase();
   if (typeNormalized.includes('flood')) return '🌊';
-  if (typeNormalized.includes('typhoon') || typeNormalized.includes('storm')) return '🌀';
-  if (typeNormalized.includes('fire')) return '🔥';
   if (typeNormalized.includes('landslide')) return '⛰️';
   if (typeNormalized.includes('road') && typeNormalized.includes('damage')) return '🚧';
-  if (typeNormalized.includes('road') && typeNormalized.includes('obstruction')) return '🚧';
-  if (typeNormalized.includes('earthquake')) return '🏚️';
+  if (typeNormalized.includes('road') && typeNormalized.includes('obstruction')) return '🚗';
+  if (typeNormalized.includes('other')) return '⚠️';
   return '⚠️';
 };
 
@@ -125,13 +127,15 @@ const endPinStyle = new Style({
 });
 
 const SafetyMap = () => {
+  const navigate = useNavigate();
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [endCoords, setEndCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeGenerated, setRouteGenerated] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string } | null>(null);
   const [isSelectingRoute, setIsSelectingRoute] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'start' | 'end' | null>(null);
-  const [showLegend, setShowLegend] = useState(true);
+  const [showLegend, setShowLegend] = useState(false);
   const [activeTab, setActiveTab] = useState('map');
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -152,6 +156,19 @@ const SafetyMap = () => {
 
   // Default center (Naval, Biliran, Philippines) - [lng, lat] for OpenLayers
   const defaultCenter: [number, number] = [124.3989, 11.5669];
+
+  // Calculate distance between two points (Haversine formula)
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   // Initialize map
   useEffect(() => {
@@ -449,11 +466,21 @@ const SafetyMap = () => {
       return;
     }
 
+    // Calculate distance and estimated time
+    const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+    const walkingSpeed = 5; // km/h
+    const timeMinutes = Math.round((distance / walkingSpeed) * 60);
+
+    setRouteInfo({
+      distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`,
+      time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
+    });
+
     setRouteGenerated(true);
 
     // Check if route passes through hazard zones
     const routeBuffer = 0.01; // ~1km buffer
-    const hasHazardOnRoute = hazards.some((hazard) => {
+    const hazardsOnRoute = hazards.filter((hazard) => {
       if (!hazard.latitude || !hazard.longitude) return false;
       const midLat = (startCoords.lat + endCoords.lat) / 2;
       const midLng = (startCoords.lng + endCoords.lng) / 2;
@@ -463,10 +490,10 @@ const SafetyMap = () => {
       return dist < routeBuffer;
     });
 
-    if (hasHazardOnRoute) {
+    if (hazardsOnRoute.length > 0) {
       toast({
         title: '⚠️ Hazard Warning',
-        description: 'Your route passes near known hazard zones. Consider an alternative path.',
+        description: `Your route passes near ${hazardsOnRoute.length} known hazard zone(s). Proceed with caution!`,
         variant: 'destructive',
       });
     } else {
@@ -481,17 +508,12 @@ const SafetyMap = () => {
     setStartCoords(null);
     setEndCoords(null);
     setRouteGenerated(false);
+    setRouteInfo(null);
     setIsSelectingRoute(false);
     setSelectionMode(null);
   }, []);
 
   const isLoading = hazardsLoading || evacLoading;
-
-  // Count hazards by severity
-  const hazardsBySeverity = hazards.reduce((acc, h) => {
-    acc[h.severity] = (acc[h.severity] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
 
   const canGenerateRoute = startCoords && endCoords && !routeGenerated;
 
@@ -575,85 +597,86 @@ const SafetyMap = () => {
       <div className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden shadow-lg border min-h-[350px] relative">
         <div ref={mapRef} className="w-full h-full min-h-[350px]" />
         
-        {/* Floating Legend */}
-        <div className={`absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 transition-all max-w-[200px] ${showLegend ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold flex items-center gap-1">
-              <Info className="w-4 h-4" />
-              Legend
-            </span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 w-6 p-0"
-              onClick={() => setShowLegend(false)}
-            >
-              ×
-            </Button>
-          </div>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🌊</span>
-              <span>Flood</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base">🌀</span>
-              <span>Typhoon</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base">🔥</span>
-              <span>Fire</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base">⛰️</span>
-              <span>Landslide</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base">🚧</span>
-              <span>Road Damage</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base">🏠</span>
-              <span>Evac Center ({evacCenters.length})</span>
-            </div>
-            <div className="border-t border-muted my-2" />
-            <p className="font-medium text-muted-foreground">Severity Colors:</p>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" />
-              <span>Low</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" />
-              <span>Medium</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" />
-              <span>High</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" />
-              <span>Critical</span>
-            </div>
-          </div>
-          {isLoading && (
-            <div className="flex items-center gap-1 text-muted-foreground mt-2">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              <span className="text-xs">Loading...</span>
-            </div>
-          )}
-        </div>
+        {/* Toggle Legend Button */}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="absolute top-4 right-4 shadow-lg z-10"
+          onClick={() => setShowLegend(!showLegend)}
+        >
+          {showLegend ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+          {showLegend ? 'Hide' : 'Show'} Legend
+        </Button>
 
-        {/* Toggle Legend Button (when hidden) */}
-        {!showLegend && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="absolute bottom-4 left-4 shadow-lg"
-            onClick={() => setShowLegend(true)}
-          >
-            <Info className="w-4 h-4 mr-1" />
-            Legend
-          </Button>
+        {/* Floating Legend */}
+        {showLegend && (
+          <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 max-w-[200px] z-10">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold flex items-center gap-1">
+                <Info className="w-4 h-4" />
+                Legend
+              </span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0"
+                onClick={() => setShowLegend(false)}
+              >
+                ×
+              </Button>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <p className="font-medium text-muted-foreground">Hazard Types:</p>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🌊</span>
+                <span>Flood</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">⛰️</span>
+                <span>Landslide</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🚧</span>
+                <span>Road Damage</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🚗</span>
+                <span>Road Obstruction</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">⚠️</span>
+                <span>Other</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🏠</span>
+                <span>Evac Center ({evacCenters.length})</span>
+              </div>
+              <div className="border-t border-muted my-2" />
+              <p className="font-medium text-muted-foreground">Severity Colors:</p>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" />
+                <span>Low</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" />
+                <span>Medium</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" />
+                <span>High</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" />
+                <span>Critical</span>
+              </div>
+            </div>
+            {isLoading && (
+              <div className="flex items-center gap-1 text-muted-foreground mt-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span className="text-xs">Loading...</span>
+              </div>
+            )}
+          </div>
         )}
         
         {/* Popup Container */}
@@ -664,12 +687,25 @@ const SafetyMap = () => {
         />
 
         {/* Route Info Overlay */}
-        {routeGenerated && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border z-10">
-            <p className="text-sm font-medium text-center">🗺️ Route Generated</p>
-            <p className="text-xs text-muted-foreground text-center">
-              {startCoords?.lat.toFixed(4)}, {startCoords?.lng.toFixed(4)} → {endCoords?.lat.toFixed(4)}, {endCoords?.lng.toFixed(4)}
-            </p>
+        {routeGenerated && routeInfo && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border z-10 min-w-[280px]">
+            <p className="text-sm font-medium text-center mb-2">🗺️ Route Generated</p>
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="bg-muted/50 rounded-lg p-2">
+                <p className="text-lg font-bold text-primary">{routeInfo.distance}</p>
+                <p className="text-xs text-muted-foreground">Distance</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-2">
+                <p className="text-lg font-bold text-primary">{routeInfo.time}</p>
+                <p className="text-xs text-muted-foreground">Est. Time</p>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-muted">
+              <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Stay alert and follow safety protocols
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -680,6 +716,14 @@ const SafetyMap = () => {
           Naval, Biliran - {hazards.length} hazard{hazards.length !== 1 ? 's' : ''} • {evacCenters.length} evacuation center{evacCenters.length !== 1 ? 's' : ''}
         </p>
       </div>
+
+      {/* Floating Report Button */}
+      <Button
+        className="fixed bottom-24 right-4 md:bottom-8 rounded-full w-14 h-14 shadow-xl z-50 bg-destructive hover:bg-destructive/90"
+        onClick={() => navigate('/report')}
+      >
+        <AlertTriangle className="w-6 h-6" />
+      </Button>
     </div>
   );
 };

@@ -23,7 +23,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useSubmitVerification } from '@/hooks/useVerification';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProfileVerificationProps {
   verificationStatus: string;
@@ -38,6 +38,7 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
   const idInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const submitVerification = useSubmitVerification();
 
@@ -45,11 +46,19 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+        toast({
+          title: 'Invalid File',
+          description: 'Please select an image file',
+          variant: 'destructive',
+        });
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image must be less than 5MB');
+        toast({
+          title: 'File Too Large',
+          description: 'Image must be less than 5MB',
+          variant: 'destructive',
+        });
         return;
       }
       setIdFile(file);
@@ -61,11 +70,19 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+        toast({
+          title: 'Invalid File',
+          description: 'Please select an image file',
+          variant: 'destructive',
+        });
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image must be less than 5MB');
+        toast({
+          title: 'File Too Large',
+          description: 'Image must be less than 5MB',
+          variant: 'destructive',
+        });
         return;
       }
       setSelfieFile(file);
@@ -75,7 +92,11 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
 
   const handleSubmit = async () => {
     if (!idFile || !selfieFile) {
-      toast.error('Please upload both your ID and selfie');
+      toast({
+        title: 'Missing Files',
+        description: 'Please upload both your ID and selfie',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -84,10 +105,18 @@ const ProfileVerification = ({ verificationStatus, adminNotes }: ProfileVerifica
         idFile, 
         selfieFile 
       });
-      toast.success('Verification submitted successfully');
+      toast({
+        title: 'Success',
+        description: 'Verification submitted successfully! Please wait for admin review.',
+      });
       handleClose();
-    } catch (error) {
-      toast.error('Failed to submit verification');
+    } catch (error: any) {
+      console.error('Verification error:', error);
+      toast({
+        title: 'Submission Failed',
+        description: error?.message || 'Failed to submit verification. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 

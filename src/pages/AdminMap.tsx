@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Map, Layers, AlertTriangle, Building2, Users, Filter, Plus, Move, Radio } from 'lucide-react';
+import { Map, Layers, AlertTriangle, Building2, Users, Plus, Move, Radio, Eye, EyeOff, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -20,14 +20,22 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import { Style, Circle, Fill, Stroke, Text as OLText } from 'ol/style';
 import Overlay from 'ol/Overlay';
-import { Modify } from 'ol/interaction';
+
+const getHazardEmoji = (type: string): string => {
+  const typeNormalized = type.toLowerCase();
+  if (typeNormalized.includes('flood')) return '🌊';
+  if (typeNormalized.includes('landslide')) return '⛰️';
+  if (typeNormalized.includes('road') && typeNormalized.includes('damage')) return '🚧';
+  if (typeNormalized.includes('road') && typeNormalized.includes('obstruction')) return '🚗';
+  return '⚠️';
+};
 
 const getSeverityColors = (severity: string) => {
   switch (severity) {
-    case 'critical': return { bg: 'bg-rose-500', text: 'text-rose-400', fill: '#e11d48' };
-    case 'high': return { bg: 'bg-orange-500', text: 'text-orange-400', fill: '#f97316' };
-    case 'medium': return { bg: 'bg-amber-500', text: 'text-amber-400', fill: '#eab308' };
-    default: return { bg: 'bg-emerald-500', text: 'text-emerald-400', fill: '#10b981' };
+    case 'critical': return { bg: 'bg-rose-500', text: 'text-rose-400', fill: '#991b1b' };
+    case 'high': return { bg: 'bg-red-500', text: 'text-red-400', fill: '#dc2626' };
+    case 'medium': return { bg: 'bg-orange-500', text: 'text-orange-400', fill: '#f97316' };
+    default: return { bg: 'bg-yellow-500', text: 'text-yellow-400', fill: '#eab308' };
   }
 };
 
@@ -47,6 +55,7 @@ const AdminMap = () => {
   // Filter toggles
   const [showHazards, setShowHazards] = useState(true);
   const [showCenters, setShowCenters] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
 
   // Real-time data from Supabase
   const { data: hazards } = useVerifiedHazards();
@@ -56,24 +65,26 @@ const AdminMap = () => {
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Hazard layer (Red markers)
+    // Hazard layer
     const hazardSource = new VectorSource();
     hazardSourceRef.current = hazardSource;
     const hazardLayer = new VectorLayer({
       source: hazardSource,
       style: (feature) => {
         const severity = feature.get('severity');
+        const type = feature.get('name');
         const colors = getSeverityColors(severity);
+        const emoji = getHazardEmoji(type);
         return new Style({
           image: new Circle({
-            radius: 12,
+            radius: 16,
             fill: new Fill({ color: colors.fill }),
             stroke: new Stroke({ color: '#fff', width: 2 }),
           }),
           text: new OLText({
-            text: '⚠️',
-            font: '16px sans-serif',
-            offsetY: -20,
+            text: emoji,
+            font: '12px sans-serif',
+            fill: new Fill({ color: '#ffffff' }),
           }),
         });
       },
@@ -89,14 +100,14 @@ const AdminMap = () => {
         const fillColor = status === 'open' ? '#10b981' : status === 'full' ? '#ef4444' : '#f59e0b';
         return new Style({
           image: new Circle({
-            radius: 10,
+            radius: 14,
             fill: new Fill({ color: fillColor }),
             stroke: new Stroke({ color: '#fff', width: 2 }),
           }),
           text: new OLText({
-            text: '🏢',
-            font: '14px sans-serif',
-            offsetY: -18,
+            text: '🏠',
+            font: '12px sans-serif',
+            fill: new Fill({ color: '#ffffff' }),
           }),
         });
       },
@@ -123,10 +134,6 @@ const AdminMap = () => {
         zoom: 13,
       }),
     });
-
-    // Drag interaction for hazards
-    const modify = new Modify({ source: hazardSource });
-    map.addInteraction(modify);
 
     // Click handler
     map.on('click', (evt) => {
@@ -295,33 +302,77 @@ const AdminMap = () => {
               </div>
               <Switch checked={showCenters} onCheckedChange={setShowCenters} />
             </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Info className="w-3 h-3 text-slate-400" />
+                <Label className="text-slate-300 text-sm">Show Legend</Label>
+              </div>
+              <Switch checked={showLegend} onCheckedChange={setShowLegend} />
+            </div>
           </CardContent>
         </Card>
 
-        {/* Legend */}
-        <Card className="bg-slate-900/50 border-slate-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-300">Severity Legend</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse" />
-              <span className="text-slate-400">Critical</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="w-3 h-3 rounded-full bg-orange-500" />
-              <span className="text-slate-400">High</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="w-3 h-3 rounded-full bg-amber-500" />
-              <span className="text-slate-400">Medium</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-slate-400">Low</span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Legend - Hideable */}
+        {showLegend && (
+          <Card className="bg-slate-900/50 border-slate-700">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-slate-300 flex items-center justify-between">
+                <span>Map Legend</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 text-slate-400 hover:text-white"
+                  onClick={() => setShowLegend(false)}
+                >
+                  <EyeOff className="w-3 h-3" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Hazard Types</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <span>🌊</span><span>Flood</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <span>⛰️</span><span>Landslide</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <span>🚧</span><span>Road Damage</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <span>🚗</span><span>Road Obstruction</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <span>⚠️</span><span>Other</span>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-700 pt-2">
+                <p className="text-xs text-slate-500 mb-1">Severity</p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                    <span className="text-slate-400">Low</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded-full bg-orange-500" />
+                    <span className="text-slate-400">Medium</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded-full bg-red-600" />
+                    <span className="text-slate-400">High</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded-full bg-red-800 animate-pulse" />
+                    <span className="text-slate-400">Critical</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <Card className="bg-slate-900/50 border-slate-700">
@@ -362,13 +413,57 @@ const AdminMap = () => {
           </Button>
         </div>
 
+        {/* Mobile Legend Toggle */}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="md:hidden absolute top-4 right-4 z-10 shadow-lg"
+          onClick={() => setShowLegend(!showLegend)}
+        >
+          {showLegend ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+          Legend
+        </Button>
+
+        {/* Mobile Legend */}
+        {showLegend && (
+          <div className="md:hidden absolute top-14 right-4 z-10 bg-slate-900/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-slate-700 max-w-[180px]">
+            <p className="text-xs font-semibold text-white mb-2">Hazard Types</p>
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2 text-slate-300">
+                <span>🌊</span><span>Flood</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <span>⛰️</span><span>Landslide</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <span>🚧</span><span>Road Damage</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <span>🚗</span><span>Road Obstruction</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <span>⚠️</span><span>Other</span>
+              </div>
+            </div>
+            <div className="border-t border-slate-600 mt-2 pt-2">
+              <p className="text-xs text-slate-400">Severity:</p>
+              <div className="flex gap-1 mt-1">
+                <span className="w-3 h-3 rounded-full bg-yellow-500" title="Low" />
+                <span className="w-3 h-3 rounded-full bg-orange-500" title="Medium" />
+                <span className="w-3 h-3 rounded-full bg-red-600" title="High" />
+                <span className="w-3 h-3 rounded-full bg-red-800" title="Critical" />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Popup Element */}
         <div ref={popupRef} className="absolute bg-command border border-slate-700 rounded-lg p-3 shadow-xl min-w-[220px] z-50">
           {selectedFeature && (
             <div className="text-white">
               <div className="flex items-center gap-2 mb-2">
                 {selectedFeature.type === 'hazard' ? (
-                  <AlertTriangle className="w-4 h-4 text-orange-400" />
+                  <span className="text-lg">{getHazardEmoji(selectedFeature.name)}</span>
                 ) : (
                   <Building2 className="w-4 h-4 text-emerald-400" />
                 )}
