@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Navigation, ArrowLeft, Route } from 'lucide-react';
+import { MapPin, Navigation, ArrowLeft, Route, Clock, Ruler, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import { fromLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import LineString from 'ol/geom/LineString';
-import { Style, Circle, Fill, Stroke } from 'ol/style';
+import { Style, Circle, Fill, Stroke, Text as OLText } from 'ol/style';
 import 'ol/ol.css';
 
 // Marker styles
@@ -29,6 +29,11 @@ const startPinStyle = new Style({
     fill: new Fill({ color: '#22c55e' }), // Green
     stroke: new Stroke({ color: '#ffffff', width: 3 }),
   }),
+  text: new OLText({
+    text: 'S',
+    font: 'bold 10px sans-serif',
+    fill: new Fill({ color: '#ffffff' }),
+  }),
 });
 
 const endPinStyle = new Style({
@@ -36,6 +41,11 @@ const endPinStyle = new Style({
     radius: 12,
     fill: new Fill({ color: '#ef4444' }), // Red
     stroke: new Stroke({ color: '#ffffff', width: 3 }),
+  }),
+  text: new OLText({
+    text: 'E',
+    font: 'bold 10px sans-serif',
+    fill: new Fill({ color: '#ffffff' }),
   }),
 });
 
@@ -46,18 +56,39 @@ const routeStyle = new Style({
   }),
 });
 
-const getHazardStyle = (severity: string) => {
+const getHazardEmoji = (type: string): string => {
+  const typeNormalized = type.toLowerCase();
+  if (typeNormalized.includes('flood')) return '🌊';
+  if (typeNormalized.includes('landslide')) return '⛰️';
+  if (typeNormalized.includes('road') && typeNormalized.includes('damage')) return '🚧';
+  if (typeNormalized.includes('road') && typeNormalized.includes('obstruction')) return '🚗';
+  return '⚠️';
+};
+
+const getSeverityColor = (severity: string): string => {
   const colorMap: Record<string, string> = {
     low: '#eab308',
     medium: '#f97316',
     high: '#dc2626',
     critical: '#991b1b',
   };
+  return colorMap[severity] || '#dc2626';
+};
+
+const getHazardStyle = (type: string, severity: string) => {
+  const color = getSeverityColor(severity);
+  const emoji = getHazardEmoji(type);
+  
   return new Style({
     image: new Circle({
-      radius: 10,
-      fill: new Fill({ color: colorMap[severity] || '#dc2626' }),
+      radius: 14,
+      fill: new Fill({ color }),
       stroke: new Stroke({ color: '#ffffff', width: 2 }),
+    }),
+    text: new OLText({
+      text: emoji,
+      font: '12px sans-serif',
+      fill: new Fill({ color: '#ffffff' }),
     }),
   });
 };
@@ -73,6 +104,8 @@ const FindRoutePage = () => {
   const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [routeGenerated, setRouteGenerated] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string; hasHazard: boolean } | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
@@ -82,47 +115,76 @@ const FindRoutePage = () => {
 
   const defaultCenter = { lat: 11.5601, lng: 124.3949 };
 
+  // Calculate distance between two points (Haversine formula)
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
   // Initialize result map
   useEffect(() => {
-    if (!routeGenerated || !mapRef.current || mapInstanceRef.current) return;
+    if (!routeGenerated || !mapRef.current) return;
 
-    const markersSource = new VectorSource();
-    const routeSource = new VectorSource();
-    const hazardSource = new VectorSource();
+    // Clean up previous map instance
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setTarget(undefined);
+      mapInstanceRef.current = null;
+    }
 
-    const markersLayer = new VectorLayer({ source: markersSource });
-    const routeLayer = new VectorLayer({ source: routeSource });
-    const hazardLayer = new VectorLayer({ source: hazardSource });
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      if (!mapRef.current) return;
 
-    markersLayerRef.current = markersLayer;
-    routeLayerRef.current = routeLayer;
-    hazardLayerRef.current = hazardLayer;
+      const markersSource = new VectorSource();
+      const routeSource = new VectorSource();
+      const hazardSource = new VectorSource();
 
-    const map = new OLMap({
-      target: mapRef.current,
-      layers: [
-        new TileLayer({ source: new OSM() }),
-        routeLayer,
-        hazardLayer,
-        markersLayer,
-      ],
-      view: new View({
-        center: fromLonLat([defaultCenter.lng, defaultCenter.lat]),
-        zoom: 14,
-      }),
-    });
+      const markersLayer = new VectorLayer({ source: markersSource, zIndex: 20 });
+      const routeLayer = new VectorLayer({ source: routeSource, zIndex: 5 });
+      const hazardLayer = new VectorLayer({ source: hazardSource, zIndex: 10 });
 
-    mapInstanceRef.current = map;
+      markersLayerRef.current = markersLayer;
+      routeLayerRef.current = routeLayer;
+      hazardLayerRef.current = hazardLayer;
+
+      const map = new OLMap({
+        target: mapRef.current,
+        layers: [
+          new TileLayer({ source: new OSM() }),
+          routeLayer,
+          hazardLayer,
+          markersLayer,
+        ],
+        view: new View({
+          center: fromLonLat([defaultCenter.lng, defaultCenter.lat]),
+          zoom: 14,
+        }),
+      });
+
+      mapInstanceRef.current = map;
+      setMapReady(true);
+    }, 100);
 
     return () => {
-      map.setTarget(undefined);
-      mapInstanceRef.current = null;
+      clearTimeout(timer);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setTarget(undefined);
+        mapInstanceRef.current = null;
+      }
+      setMapReady(false);
     };
   }, [routeGenerated]);
 
   // Draw route and markers when map is ready
   useEffect(() => {
-    if (!routeGenerated || !mapInstanceRef.current || !startCoords || !endCoords) return;
+    if (!mapReady || !mapInstanceRef.current || !startCoords || !endCoords) return;
 
     const markersSource = markersLayerRef.current?.getSource();
     const routeSource = routeLayerRef.current?.getSource();
@@ -178,7 +240,7 @@ const FindRoutePage = () => {
         const feature = new Feature({
           geometry: new Point(fromLonLat([hazard.longitude, hazard.latitude])),
         });
-        feature.setStyle(getHazardStyle(hazard.severity));
+        feature.setStyle(getHazardStyle(hazard.type, hazard.severity));
         hazardSource.addFeature(feature);
       }
     });
@@ -188,33 +250,10 @@ const FindRoutePage = () => {
     mapInstanceRef.current?.getView().fit(extent, {
       padding: [60, 60, 60, 60],
       maxZoom: 16,
+      duration: 500,
     });
 
-    // Check for hazards along route
-    const hasHazardOnRoute = nearbyHazards.some(h => {
-      if (!h.latitude || !h.longitude) return false;
-      // Simple distance check from route line
-      const midLat = (startCoords.lat + endCoords.lat) / 2;
-      const midLng = (startCoords.lng + endCoords.lng) / 2;
-      const dist = Math.sqrt(
-        Math.pow(h.latitude - midLat, 2) + Math.pow(h.longitude - midLng, 2)
-      );
-      return dist < 0.01;
-    });
-
-    if (hasHazardOnRoute) {
-      toast({
-        title: '⚠️ Hazard Warning',
-        description: 'Your route passes near known hazard zones. Consider an alternative path.',
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: '✅ Safe Route',
-        description: 'Your route avoids known hazard zones.',
-      });
-    }
-  }, [routeGenerated, startCoords, endCoords, hazards, toast]);
+  }, [mapReady, startCoords, endCoords, hazards]);
 
   const openPicker = (mode: 'start' | 'end') => {
     setPickerMode(mode);
@@ -231,13 +270,52 @@ const FindRoutePage = () => {
 
   const handleGenerateRoute = () => {
     if (!startCoords || !endCoords) return;
+    
+    // Calculate distance and estimated time
+    const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+    const walkingSpeed = 5; // km/h
+    const timeMinutes = Math.round((distance / walkingSpeed) * 60);
+
+    // Check for hazards along route
+    const routeBuffer = 0.01;
+    const hasHazardOnRoute = hazards.some(h => {
+      if (!h.latitude || !h.longitude) return false;
+      const midLat = (startCoords.lat + endCoords.lat) / 2;
+      const midLng = (startCoords.lng + endCoords.lng) / 2;
+      const dist = Math.sqrt(
+        Math.pow(h.latitude - midLat, 2) + Math.pow(h.longitude - midLng, 2)
+      );
+      return dist < routeBuffer;
+    });
+
+    setRouteInfo({
+      distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`,
+      time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
+      hasHazard: hasHazardOnRoute,
+    });
+
     setRouteGenerated(true);
+
+    if (hasHazardOnRoute) {
+      toast({
+        title: '⚠️ Hazard Warning',
+        description: 'Your route passes near known hazard zones. Consider an alternative path.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: '✅ Safe Route',
+        description: 'Your route avoids known hazard zones.',
+      });
+    }
   };
 
   const handleReset = () => {
     setRouteGenerated(false);
+    setRouteInfo(null);
     setStartCoords(null);
     setEndCoords(null);
+    setMapReady(false);
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setTarget(undefined);
       mapInstanceRef.current = null;
@@ -257,14 +335,59 @@ const FindRoutePage = () => {
           <div>
             <h1 className="text-lg font-bold">Route Result</h1>
             <p className="text-xs text-primary-foreground/80">
-              {startCoords?.lat.toFixed(4)}, {startCoords?.lng.toFixed(4)} → {endCoords?.lat.toFixed(4)}, {endCoords?.lng.toFixed(4)}
+              Your safe route has been generated
             </p>
           </div>
+        </div>
+
+        {/* Route Info Cards */}
+        <div className="p-4 bg-background border-b">
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-3 text-center">
+                <Ruler className="w-5 h-5 mx-auto mb-1 text-primary" />
+                <p className="text-xl font-bold text-primary">{routeInfo?.distance}</p>
+                <p className="text-xs text-muted-foreground">Distance</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-3 text-center">
+                <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
+                <p className="text-xl font-bold text-primary">{routeInfo?.time}</p>
+                <p className="text-xs text-muted-foreground">Est. Walking Time</p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Safety Status */}
+          <Card className={routeInfo?.hasHazard ? 'bg-destructive/10 border-destructive/30' : 'bg-green-50 border-green-200'}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${routeInfo?.hasHazard ? 'bg-destructive/20' : 'bg-green-100'}`}>
+                <AlertTriangle className={`w-5 h-5 ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-600'}`} />
+              </div>
+              <div>
+                <p className={`font-semibold ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-700'}`}>
+                  {routeInfo?.hasHazard ? 'Caution Required' : 'Route is Clear'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {routeInfo?.hasHazard 
+                    ? 'Hazards detected near your route. Proceed with caution.'
+                    : 'No known hazards detected along your route.'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Result Map */}
         <div className="flex-1 relative">
           <div ref={mapRef} className="w-full h-full" />
+          
+          {!mapReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
           
           {/* Legend */}
           <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border text-xs space-y-1.5">
@@ -282,7 +405,7 @@ const FindRoutePage = () => {
               <span>Route</span>
             </div>
             <div className="border-t border-muted my-1 pt-1">
-              <p className="text-muted-foreground">Hazards:</p>
+              <p className="text-muted-foreground">Hazard Severity:</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-yellow-500" />
@@ -291,6 +414,17 @@ const FindRoutePage = () => {
               <span>Med</span>
               <div className="w-3 h-3 rounded-full bg-red-600 ml-2" />
               <span>High</span>
+            </div>
+          </div>
+
+          {/* Reminder Card */}
+          <div className="absolute top-4 left-4 right-4 bg-amber-50 border border-amber-200 rounded-lg p-3 shadow-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-800">
+                <p className="font-semibold">Safety Reminder</p>
+                <p>Always stay alert and follow local authorities' instructions. This route is for guidance only.</p>
+              </div>
             </div>
           </div>
         </div>

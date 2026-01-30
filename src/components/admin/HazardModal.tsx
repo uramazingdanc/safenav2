@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { AlertTriangle, Loader2, Radio } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { AlertTriangle, Loader2, Radio, Camera, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,6 +21,7 @@ const HAZARD_TYPES = [
   { value: 'landslide', label: 'Landslide', icon: '⛰️' },
   { value: 'road_damage', label: 'Road Damage', icon: '🚧' },
   { value: 'road_obstruction', label: 'Road Obstruction', icon: '🚗' },
+  { value: 'other', label: 'Other', icon: '⚠️' },
 ];
 
 const SEVERITY_LEVELS = [
@@ -34,6 +34,7 @@ const SEVERITY_LEVELS = [
 const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
   const { toast } = useToast();
   const createHazard = useCreateHazard();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     type: '',
@@ -44,6 +45,40 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(
     initialCoords || null
   );
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid File',
+          description: 'Please select an image file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: 'File Too Large',
+          description: 'Image must be less than 10MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleClose = () => {
     setFormData({
@@ -53,6 +88,7 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
       description: '',
     });
     setCoordinates(null);
+    handleRemovePhoto();
     onClose();
   };
 
@@ -70,6 +106,15 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
       toast({
         title: 'Missing Location',
         description: 'Please select a location on the map or enter coordinates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!photoFile) {
+      toast({
+        title: 'Missing Photo',
+        description: 'Please upload a photo as evidence.',
         variant: 'destructive',
       });
       return;
@@ -168,7 +213,7 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
               <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
                 <SelectValue placeholder="Select barangay" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
+              <SelectContent className="bg-slate-800 border-slate-700 max-h-[200px]">
                 {NAVAL_BARANGAYS.map(brgy => (
                   <SelectItem key={brgy} value={brgy} className="text-white hover:bg-slate-700">
                     {brgy}
@@ -186,6 +231,46 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
               placeholder="Additional details about the hazard..."
               className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 min-h-[80px]"
             />
+          </div>
+
+          {/* Photo Evidence */}
+          <div className="space-y-2">
+            <Label className="text-slate-300">Photo Evidence *</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoSelect}
+            />
+            
+            {photoPreview ? (
+              <div className="relative">
+                <img 
+                  src={photoPreview} 
+                  alt="Evidence" 
+                  className="w-full h-40 object-cover rounded-lg border border-slate-600"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8"
+                  onClick={handleRemovePhoto}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div 
+                className="border-2 border-dashed border-slate-600 rounded-lg p-6 text-center cursor-pointer hover:bg-slate-800/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                <p className="text-sm font-medium text-slate-300">Upload Photo</p>
+                <p className="text-xs text-slate-500">Click to select an image</p>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
