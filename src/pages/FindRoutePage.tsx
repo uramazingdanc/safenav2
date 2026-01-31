@@ -324,7 +324,31 @@ const FindRoutePage = () => {
 
   const canGenerate = startCoords && endCoords;
 
+  // Generate simple directions based on coordinates
+  const generateDirections = () => {
+    if (!startCoords || !endCoords) return [];
+    
+    const latDiff = endCoords.lat - startCoords.lat;
+    const lngDiff = endCoords.lng - startCoords.lng;
+    
+    const nsDirection = latDiff > 0 ? 'North' : 'South';
+    const ewDirection = lngDiff > 0 ? 'East' : 'West';
+    
+    const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+    const distanceStr = distance < 1 ? `${Math.round(distance * 1000)} meters` : `${distance.toFixed(1)} km`;
+    
+    return [
+      { step: 1, instruction: `Start from your current location`, icon: '📍' },
+      { step: 2, instruction: `Head ${nsDirection}${ewDirection !== 'East' && ewDirection !== 'West' ? '' : `-${ewDirection}`}`, icon: '🧭' },
+      { step: 3, instruction: `Continue for approximately ${distanceStr}`, icon: '🚶' },
+      { step: 4, instruction: `Look for landmarks and follow main roads`, icon: '🛤️' },
+      { step: 5, instruction: `Arrive at your destination`, icon: '🎯' },
+    ];
+  };
+
   if (routeGenerated) {
+    const directions = generateDirections();
+    
     return (
       <div className="h-[calc(100vh-8rem)] md:h-screen flex flex-col">
         {/* Header */}
@@ -341,8 +365,8 @@ const FindRoutePage = () => {
         </div>
 
         {/* Route Info Cards */}
-        <div className="p-4 bg-background border-b">
-          <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="p-4 bg-background border-b space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-3 text-center">
                 <Ruler className="w-5 h-5 mx-auto mb-1 text-primary" />
@@ -379,54 +403,86 @@ const FindRoutePage = () => {
           </Card>
         </div>
 
-        {/* Result Map */}
-        <div className="flex-1 relative">
-          <div ref={mapRef} className="w-full h-full" />
-          
-          {!mapReady && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          )}
-          
-          {/* Legend */}
-          <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border text-xs space-y-1.5">
-            <p className="font-semibold text-sm mb-2">Route Legend</p>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow" />
-              <span>Start Point</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow" />
-              <span>Destination</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-1 bg-blue-500 rounded" />
-              <span>Route</span>
-            </div>
-            <div className="border-t border-muted my-1 pt-1">
-              <p className="text-muted-foreground">Hazard Severity:</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <span>Low</span>
-              <div className="w-3 h-3 rounded-full bg-orange-500 ml-2" />
-              <span>Med</span>
-              <div className="w-3 h-3 rounded-full bg-red-600 ml-2" />
-              <span>High</span>
-            </div>
-          </div>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Result Map */}
+          <div className="h-[250px] relative mx-4 my-3 rounded-xl overflow-hidden border shadow-lg">
+            <div ref={mapRef} className="w-full h-full" />
+            
+            {!mapReady && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
 
-          {/* Reminder Card */}
-          <div className="absolute top-4 left-4 right-4 bg-amber-50 border border-amber-200 rounded-lg p-3 shadow-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-amber-800">
-                <p className="font-semibold">Safety Reminder</p>
-                <p>Always stay alert and follow local authorities' instructions. This route is for guidance only.</p>
+            {/* Reminder Card */}
+            <div className="absolute top-2 left-2 right-2 bg-amber-50 border border-amber-200 rounded-lg p-2 shadow-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-800">
+                  <p className="font-semibold">Safety Reminder</p>
+                  <p>Stay alert and follow local authorities' instructions.</p>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* V11-Style Directions Panel */}
+          <Card className="mx-4 mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Navigation className="w-4 h-4 text-primary" />
+                Directions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                {directions.map((dir, idx) => (
+                  <div 
+                    key={dir.step} 
+                    className={`flex items-start gap-3 p-2 rounded-lg ${
+                      idx === 0 ? 'bg-green-50 border border-green-200' :
+                      idx === directions.length - 1 ? 'bg-primary/5 border border-primary/20' :
+                      'bg-muted/30'
+                    }`}
+                  >
+                    <span className="text-lg">{dir.icon}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{dir.instruction}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                      Step {dir.step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Route Legend */}
+          <Card className="mx-4 mb-4">
+            <CardContent className="p-3">
+              <p className="text-xs font-semibold mb-2">Route Legend</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow" />
+                  <span>Start Point</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow" />
+                  <span>Destination</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-1 bg-blue-500 rounded" />
+                  <span>Route</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-orange-500" />
+                  <span>Hazard Zone</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Bottom Action */}
