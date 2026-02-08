@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, MapPin, Check } from 'lucide-react';
+import { MapPin, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -31,35 +31,66 @@ const MapPickerModal = ({
   mode,
   initialCoords,
 }: MapPickerModalProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
   const [centerCoords, setCenterCoords] = useState<{ lat: number; lng: number }>({
     lat: initialCoords?.lat || 11.5601,
     lng: initialCoords?.lng || 124.3949,
   });
+  const [mapReady, setMapReady] = useState(false);
 
   const defaultCenter = { lat: 11.5601, lng: 124.3949 }; // Naval, Biliran
 
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      setCenterCoords({
+        lat: initialCoords?.lat || 11.5601,
+        lng: initialCoords?.lng || 124.3949,
+      });
+      setMapReady(false);
+    }
+  }, [open, initialCoords]);
+
   // Initialize map when modal opens
   useEffect(() => {
-    if (!open || !mapRef.current) return;
-
-    // Cleanup existing map first
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.setTarget(undefined);
-      mapInstanceRef.current = null;
+    if (!open) {
+      // Cleanup when closing
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setTarget(undefined);
+        mapInstanceRef.current = null;
+      }
+      return;
     }
 
-    // Longer delay to ensure dialog is fully rendered and has dimensions
+    // Wait for dialog animation to complete
     const initTimer = setTimeout(() => {
-      if (!mapRef.current) return;
+      if (!mapContainerRef.current) return;
+      
+      // Cleanup any existing map
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setTarget(undefined);
+        mapInstanceRef.current = null;
+      }
+
+      const container = mapContainerRef.current;
+      const rect = container.getBoundingClientRect();
+      
+      // Only initialize if container has dimensions
+      if (rect.width === 0 || rect.height === 0) {
+        console.warn('Map container has no dimensions, retrying...');
+        return;
+      }
 
       const initialCenter = initialCoords || defaultCenter;
 
       const map = new OLMap({
-        target: mapRef.current,
+        target: container,
         layers: [
-          new TileLayer({ source: new OSM() }),
+          new TileLayer({ 
+            source: new OSM(),
+            preload: 4,
+          }),
         ],
         view: new View({
           center: fromLonLat([initialCenter.lng, initialCenter.lat]),
@@ -78,25 +109,39 @@ const MapPickerModal = ({
       });
 
       mapInstanceRef.current = map;
+      setMapReady(true);
 
-      // Force resize after a short delay to ensure tiles load
-      setTimeout(() => {
-        map.updateSize();
-      }, 100);
-    }, 200);
+      // Force resize multiple times to ensure tiles load
+      const resizeMap = () => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.updateSize();
+        }
+      };
+      
+      resizeMap();
+      setTimeout(resizeMap, 100);
+      setTimeout(resizeMap, 300);
+      setTimeout(resizeMap, 500);
+    }, 350); // Wait for dialog open animation
 
     return () => {
       clearTimeout(initTimer);
     };
-  }, [open]);
+  }, [open, initialCoords]);
 
-  // Cleanup map on close
+  // Handle resize events
   useEffect(() => {
-    if (!open && mapInstanceRef.current) {
-      mapInstanceRef.current.setTarget(undefined);
-      mapInstanceRef.current = null;
-    }
-  }, [open]);
+    if (!open || !mapInstanceRef.current) return;
+
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.updateSize();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open, mapReady]);
 
   const handleConfirm = useCallback(() => {
     onConfirm(centerCoords);
@@ -104,31 +149,48 @@ const MapPickerModal = ({
   }, [centerCoords, onConfirm, onOpenChange]);
 
   const pinColor = mode === 'start' ? 'text-green-500' : 'text-red-500';
-  const pinBgColor = mode === 'start' ? 'bg-green-500' : 'bg-red-500';
   const modeLabel = mode === 'start' ? 'Start' : 'Destination';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full h-[85vh] p-0 gap-0 flex flex-col">
-        <DialogHeader className="p-4 pb-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <MapPin className={`w-5 h-5 ${pinColor}`} />
-            Set {modeLabel} Location
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground">
+      <DialogContent className="max-w-[95vw] sm:max-w-[600px] h-[80vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <div className="p-4 pb-2 border-b bg-background shrink-0">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <MapPin className={`w-5 h-5 ${pinColor}`} />
+              Set {modeLabel} Location
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mt-1">
             Drag the map to position the pin at your desired {modeLabel.toLowerCase()} location
           </p>
-        </DialogHeader>
+        </div>
 
-        {/* Map Container */}
-        <div className="relative flex-1 min-h-0">
-          <div ref={mapRef} style={{ width: '100%', height: '100%', minHeight: '300px' }} />
+        {/* Map Container - Fixed height approach */}
+        <div className="relative flex-1 bg-muted">
+          {/* Actual map container with explicit dimensions */}
+          <div 
+            ref={mapContainerRef} 
+            className="absolute inset-0"
+            style={{ width: '100%', height: '100%' }}
+          />
+
+          {/* Loading indicator */}
+          {!mapReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted z-5">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-muted-foreground">Loading map...</span>
+              </div>
+            </div>
+          )}
 
           {/* Fixed Center Pin (Crosshair) */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-10 pointer-events-none">
-            <div className="flex flex-col items-center">
-              <MapPin className={`w-10 h-10 ${pinColor} drop-shadow-lg`} fill={mode === 'start' ? '#22c55e' : '#ef4444'} />
-            </div>
+            <MapPin 
+              className={`w-10 h-10 ${pinColor} drop-shadow-lg`} 
+              fill={mode === 'start' ? '#22c55e' : '#ef4444'} 
+            />
           </div>
 
           {/* Coordinates Display */}
