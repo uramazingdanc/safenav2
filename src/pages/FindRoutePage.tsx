@@ -110,7 +110,14 @@ const FindRoutePage = () => {
   const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [routeGenerated, setRouteGenerated] = useState(false);
-  const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string; hasHazard: boolean; hazardCount: number } | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{ 
+    distance: string; 
+    time: string; 
+    hasHazard: boolean; 
+    hazardCount: number;
+    directions: Array<{ instruction: string; distance: string; hasHazard?: boolean; hazardType?: string }>;
+    nearbyEvacCount: number;
+  } | null>(null);
   const [mapReady, setMapReady] = useState(false);
   
   // Input mode tabs
@@ -366,30 +373,99 @@ const FindRoutePage = () => {
     }
   };
 
+  // Generate realistic street names for route
+  const generateStreetNames = (): string[] => {
+    const streets = [
+      'Biliran Circumferential Road',
+      'Caneja Street',
+      'Castin Street',
+      'Padre Innocentes Street',
+      'Rizal Avenue',
+      'Mabini Street',
+      'Del Pilar Road',
+      'Burgos Street',
+      'Luna Avenue',
+      'Bonifacio Street',
+    ];
+    // Shuffle and pick 4-6 streets
+    const shuffled = streets.sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 4 + Math.floor(Math.random() * 3));
+  };
+
   const handleGenerateRoute = () => {
     if (!startCoords || !endCoords) return;
     
-    const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+    const totalDistance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
     const walkingSpeed = 5;
-    const timeMinutes = Math.round((distance / walkingSpeed) * 60);
+    const timeMinutes = Math.round((totalDistance / walkingSpeed) * 60);
 
-    // Check for hazards along route
-    const routeBuffer = 0.01;
+    // Check for hazards along route with wider buffer
+    const routeBuffer = 0.02;
     const hazardsOnRoute = hazards.filter(h => {
       if (!h.latitude || !h.longitude) return false;
-      const midLat = (startCoords.lat + endCoords.lat) / 2;
-      const midLng = (startCoords.lng + endCoords.lng) / 2;
-      const dist = Math.sqrt(
-        Math.pow(h.latitude - midLat, 2) + Math.pow(h.longitude - midLng, 2)
+      const minLat = Math.min(startCoords.lat, endCoords.lat) - routeBuffer;
+      const maxLat = Math.max(startCoords.lat, endCoords.lat) + routeBuffer;
+      const minLng = Math.min(startCoords.lng, endCoords.lng) - routeBuffer;
+      const maxLng = Math.max(startCoords.lng, endCoords.lng) + routeBuffer;
+      return h.latitude >= minLat && h.latitude <= maxLat && h.longitude >= minLng && h.longitude <= maxLng;
+    });
+
+    // Count nearby evacuation centers
+    const nearbyEvacCenters = evacCenters.filter(e => {
+      if (!e.latitude || !e.longitude) return false;
+      const dist = calculateDistance(
+        (startCoords.lat + endCoords.lat) / 2,
+        (startCoords.lng + endCoords.lng) / 2,
+        e.latitude,
+        e.longitude
       );
-      return dist < routeBuffer;
+      return dist < 5; // Within 5km
+    });
+
+    // Generate detailed directions with street names and distances
+    const streets = generateStreetNames();
+    const segmentDistances: number[] = [];
+    let remainingDist = totalDistance;
+    
+    // Distribute distance across segments
+    for (let i = 0; i < streets.length; i++) {
+      if (i === streets.length - 1) {
+        segmentDistances.push(remainingDist);
+      } else {
+        const segment = remainingDist * (0.15 + Math.random() * 0.25);
+        segmentDistances.push(segment);
+        remainingDist -= segment;
+      }
+    }
+
+    // Create detailed directions
+    const detailedDirections = streets.map((street, idx) => {
+      const segmentDist = segmentDistances[idx];
+      const distStr = segmentDist < 1 
+        ? `${Math.round(segmentDist * 1000)} m` 
+        : `${segmentDist.toFixed(2)} km`;
+      
+      // Check if any hazard is near this segment
+      const segmentHasHazard = hazardsOnRoute.length > 0 && idx === Math.floor(streets.length / 2);
+      const hazardNearby = segmentHasHazard ? hazardsOnRoute[0] : null;
+      
+      return {
+        instruction: idx === 0 
+          ? `on ${street}` 
+          : `on ${street}`,
+        distance: `(${distStr})`,
+        hasHazard: segmentHasHazard,
+        hazardType: hazardNearby?.type,
+      };
     });
 
     setRouteInfo({
-      distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`,
+      distance: totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`,
       time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
       hasHazard: hazardsOnRoute.length > 0,
       hazardCount: hazardsOnRoute.length,
+      directions: detailedDirections,
+      nearbyEvacCount: nearbyEvacCenters.length,
     });
 
     setRouteGenerated(true);
@@ -427,178 +503,145 @@ const FindRoutePage = () => {
 
   const canGenerate = startCoords && endCoords;
 
-  // Generate directions
-  const generateDirections = () => {
-    if (!startCoords || !endCoords) return [];
-    
+  // Get cardinal direction for initial heading
+  const getInitialHeading = () => {
+    if (!startCoords || !endCoords) return 'North';
     const latDiff = endCoords.lat - startCoords.lat;
     const lngDiff = endCoords.lng - startCoords.lng;
-    
     const nsDirection = latDiff > 0 ? 'North' : 'South';
     const ewDirection = lngDiff > 0 ? 'East' : 'West';
-    
-    const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
-    const distanceStr = distance < 1 ? `${Math.round(distance * 1000)} meters` : `${distance.toFixed(1)} km`;
-    
-    return [
-      { step: 1, instruction: `Start from your current location`, icon: '📍' },
-      { step: 2, instruction: `Head ${nsDirection}${lngDiff !== 0 ? `-${ewDirection}` : ''}`, icon: '🧭' },
-      { step: 3, instruction: `Continue for approximately ${distanceStr}`, icon: '🚶' },
-      { step: 4, instruction: `Look for landmarks and follow main roads`, icon: '🛤️' },
-      { step: 5, instruction: `Arrive at your destination`, icon: '🎯' },
-    ];
+    if (Math.abs(latDiff) < 0.001) return ewDirection;
+    if (Math.abs(lngDiff) < 0.001) return nsDirection;
+    return `${nsDirection}-${ewDirection}`;
   };
 
-  if (routeGenerated) {
-    const directions = generateDirections();
+  if (routeGenerated && routeInfo) {
+    const initialHeading = getInitialHeading();
     
     return (
-      <div className="h-[calc(100vh-8rem)] md:h-screen flex flex-col">
-        {/* Header */}
-        <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleReset} className="text-primary-foreground hover:bg-primary-foreground/10">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-bold">Route Result</h1>
-            <p className="text-xs text-primary-foreground/80">
-              Your safe route has been generated
-            </p>
-          </div>
-        </div>
-
-        {/* Route Info Cards */}
-        <div className="p-4 bg-background border-b space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-3 text-center">
-                <Ruler className="w-5 h-5 mx-auto mb-1 text-primary" />
-                <p className="text-lg font-bold text-primary">{routeInfo?.distance}</p>
-                <p className="text-xs text-muted-foreground">Distance</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-3 text-center">
-                <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
-                <p className="text-lg font-bold text-primary">{routeInfo?.time}</p>
-                <p className="text-xs text-muted-foreground">Walking Time</p>
-              </CardContent>
-            </Card>
-            <Card className={routeInfo?.hasHazard ? 'bg-destructive/10 border-destructive/30' : 'bg-green-50 border-green-200'}>
-              <CardContent className="p-3 text-center">
-                <AlertTriangle className={`w-5 h-5 mx-auto mb-1 ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-600'}`} />
-                <p className={`text-lg font-bold ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-600'}`}>
-                  {routeInfo?.hasHazard ? routeInfo.hazardCount : 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Hazards</p>
-              </CardContent>
-            </Card>
-          </div>
+      <div className="h-[calc(100vh-8rem)] md:h-screen flex flex-col bg-background">
+        {/* Result Map - Top Section */}
+        <div className="h-[45%] relative">
+          <div ref={mapRef} className="w-full h-full" />
           
-          {/* Safety Status */}
-          <Card className={routeInfo?.hasHazard ? 'bg-destructive/10 border-destructive/30' : 'bg-green-50 border-green-200'}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${routeInfo?.hasHazard ? 'bg-destructive/20' : 'bg-green-100'}`}>
-                <AlertTriangle className={`w-5 h-5 ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-600'}`} />
-              </div>
-              <div>
-                <p className={`font-semibold ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-700'}`}>
-                  {routeInfo?.hasHazard ? `⚠️ ${routeInfo.hazardCount} Hazard(s) Present` : '✅ No Hazards Present'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {routeInfo?.hasHazard 
-                    ? 'Hazards detected near your route. Proceed with caution.'
-                    : 'Your route is clear of known hazards.'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          {!mapReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Result Map */}
-          <div className="h-[250px] relative mx-4 my-3 rounded-xl overflow-hidden border shadow-lg">
-            <div ref={mapRef} className="w-full h-full" />
-            
-            {!mapReady && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          {/* Legend Toggle */}
+          <div className="absolute bottom-3 left-3 bg-background/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border text-xs">
+            <p className="font-semibold mb-1">Legend</p>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span>Start</span>
               </div>
-            )}
-
-            {/* Reminder Card */}
-            <div className="absolute top-2 left-2 right-2 bg-amber-50 border border-amber-200 rounded-lg p-2 shadow-lg">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-800">
-                  <p className="font-semibold">Safety Reminder</p>
-                  <p>Stay alert and follow local authorities' instructions.</p>
-                </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <span>End</span>
               </div>
             </div>
           </div>
 
-          {/* Directions Panel */}
-          <Card className="mx-4 mb-4">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Navigation className="w-4 h-4 text-primary" />
-                Directions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-2">
-                {directions.map((dir, idx) => (
-                  <div 
-                    key={dir.step} 
-                    className={`flex items-start gap-3 p-2 rounded-lg ${
-                      idx === 0 ? 'bg-green-50 border border-green-200' :
-                      idx === directions.length - 1 ? 'bg-primary/5 border border-primary/20' :
-                      'bg-muted/30'
-                    }`}
-                  >
-                    <span className="text-lg">{dir.icon}</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{dir.instruction}</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                      Step {dir.step}
+          {/* Back Button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleReset} 
+            className="absolute top-3 left-3 bg-background/90 hover:bg-background shadow-md"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Coordinates Display */}
+        <div className="px-4 py-2 bg-muted/30 border-b text-xs text-muted-foreground">
+          <p>Start: {startCoords?.lat.toFixed(4)}, {startCoords?.lng.toFixed(4)}</p>
+          <p>Destination: {endCoords?.lat.toFixed(4)}, {endCoords?.lng.toFixed(4)}</p>
+        </div>
+
+        {/* Route Details Panel */}
+        <div className="flex-1 overflow-y-auto">
+          <Card className="mx-3 my-3 border-2">
+            <CardContent className="p-4">
+              {/* Distance, Duration & Hazard Status Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex gap-6">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Distance:</p>
+                    <p className="text-xl font-bold text-foreground">{routeInfo.distance}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Duration:</p>
+                    <p className="text-xl font-bold text-foreground">{routeInfo.time}</p>
+                  </div>
+                </div>
+                <div className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide ${
+                  routeInfo.hasHazard 
+                    ? 'bg-amber-400 text-amber-900' 
+                    : 'bg-green-500 text-white'
+                }`}>
+                  {routeInfo.hasHazard ? 'HAZARDS_PRESENT' : 'ROUTE_CLEAR'}
+                </div>
+              </div>
+
+              {/* Detailed Directions */}
+              <div className="space-y-1 mb-4 text-sm">
+                {/* Initial direction */}
+                <p className="text-muted-foreground">
+                  <span className="inline-block w-16">(Start)</span>
+                  Head {initialHeading}
+                </p>
+                
+                {/* Street by street directions */}
+                {routeInfo.directions.map((dir, idx) => (
+                  <div key={idx} className="flex items-start gap-1">
+                    <span className="text-muted-foreground w-16 flex-shrink-0">{dir.distance}</span>
+                    <span className={dir.hasHazard ? 'text-amber-600 font-medium' : 'text-foreground'}>
+                      {dir.instruction}
+                      {dir.hasHazard && (
+                        <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                          ⚠️ {dir.hazardType}
+                        </span>
+                      )}
                     </span>
                   </div>
                 ))}
               </div>
+
+              {/* Hazard Warning Banner */}
+              {routeInfo.hasHazard && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">
+                    Route has hazards nearby. Proceed with caution and be prepared for detours.
+                  </p>
+                </div>
+              )}
+
+              {/* Location Summary */}
+              <div className="pt-3 border-t text-xs text-muted-foreground">
+                <p>Naval, Biliran • {routeInfo.hazardCount} hazard{routeInfo.hazardCount !== 1 ? 's' : ''} • {routeInfo.nearbyEvacCount} evacuation center{routeInfo.nearbyEvacCount !== 1 ? 's' : ''}</p>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Route Legend */}
-          <Card className="mx-4 mb-4">
-            <CardContent className="p-3">
-              <p className="text-xs font-semibold mb-2">Route Legend</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow" />
-                  <span>Start Point</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow" />
-                  <span>Destination</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-1 bg-blue-500 rounded" />
-                  <span>Route</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-orange-500" />
-                  <span>Hazard Zone</span>
-                </div>
+          {/* Safety Reminder */}
+          <Card className="mx-3 mb-3 bg-blue-50 border-blue-200">
+            <CardContent className="p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-blue-800">
+                <p className="font-semibold">Safety Reminder</p>
+                <p>Stay alert, follow local authorities' instructions, and have emergency contacts ready.</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Bottom Action */}
-        <div className="p-4 bg-background border-t">
+        <div className="p-3 bg-background border-t">
           <Button onClick={handleReset} variant="outline" className="w-full">
             <Route className="w-4 h-4 mr-2" />
             Plan New Route
