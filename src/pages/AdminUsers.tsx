@@ -36,6 +36,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import UserProfileModal from '@/components/admin/UserProfileModal';
 
 const AdminUsers = () => {
   const { t } = useLanguage();
@@ -43,6 +44,7 @@ const AdminUsers = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'unverified'>('all');
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; userId: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const { data: profiles, isLoading } = useRealtimeUsers();
   const verifyUser = useVerifyUser();
   const queryClient = useQueryClient();
@@ -271,7 +273,10 @@ const AdminUsers = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
-                          <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer">
+                          <DropdownMenuItem 
+                            className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
+                            onClick={() => setSelectedUser(user)}
+                          >
                             <Eye className="w-4 h-4 mr-2" />
                             View Profile
                           </DropdownMenuItem>
@@ -348,6 +353,13 @@ const AdminUsers = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        open={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        user={selectedUser}
+      />
     </div>
   );
 };

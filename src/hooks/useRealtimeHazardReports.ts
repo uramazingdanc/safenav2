@@ -154,7 +154,8 @@ export const useUpdateReport = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: HazardReportUpdate & { id: string }) => {
-      const { data, error } = await supabase
+      // Update the report status
+      const { data: updatedReport, error } = await supabase
         .from('hazard_reports')
         .update({
           ...updates,
@@ -165,10 +166,33 @@ export const useUpdateReport = () => {
         .single();
 
       if (error) throw error;
-      return data;
+
+      // If the report is being verified, also create a hazard entry
+      if (updates.status === 'verified' && updatedReport) {
+        const { error: hazardError } = await supabase
+          .from('hazards')
+          .insert({
+            type: updatedReport.hazard_type,
+            severity: 'medium', // Default severity for user reports
+            location: updatedReport.location,
+            description: updatedReport.description,
+            latitude: updatedReport.latitude,
+            longitude: updatedReport.longitude,
+            photo_url: updatedReport.photo_url,
+            status: 'active',
+          });
+
+        if (hazardError) {
+          console.error('Failed to create hazard from verified report:', hazardError);
+          // Don't throw - the report was still verified successfully
+        }
+      }
+
+      return updatedReport;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hazard_reports'] });
+      queryClient.invalidateQueries({ queryKey: ['hazards'] });
       queryClient.invalidateQueries({ queryKey: ['admin_stats'] });
     }
   });
