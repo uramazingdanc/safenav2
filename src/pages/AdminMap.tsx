@@ -457,8 +457,11 @@ const AdminMap = () => {
           </div>
         )}
 
-        {/* Popup Element */}
-        <div ref={popupRef} className="absolute bg-command border border-slate-700 rounded-lg p-3 shadow-xl min-w-[220px] z-50">
+        {/* Popup Element - Hidden when no feature selected */}
+        <div 
+          ref={popupRef} 
+          className={`absolute bg-command border border-slate-700 rounded-lg p-3 shadow-xl min-w-[220px] z-50 ${!selectedFeature ? 'hidden' : ''}`}
+        >
           {selectedFeature && (
             <div className="text-white">
               <div className="flex items-center gap-2 mb-2">
