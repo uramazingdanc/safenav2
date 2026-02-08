@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { MapPin, Navigation, Loader2, Info, Route, X, Check, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -142,6 +143,7 @@ const SafetyMap = () => {
     data: any;
     position: number[] | null;
   }>({ type: null, data: null, position: null });
+  const [popupHost, setPopupHost] = useState<HTMLDivElement | null>(null);
   const { t } = useLanguage();
   const { toast } = useToast();
 
@@ -151,7 +153,6 @@ const SafetyMap = () => {
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<Overlay | null>(null);
   const userLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const routeLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
@@ -161,6 +162,12 @@ const SafetyMap = () => {
 
   // Default center (Naval, Biliran, Philippines) - [lng, lat] for OpenLayers
   const defaultCenter: [number, number] = [124.3989, 11.5669];
+
+  // OpenLayers controls the popup element; React controls its contents via portal.
+  useEffect(() => {
+    if (!popupHost) return;
+    popupHost.style.display = popupContent.type ? 'block' : 'none';
+  }, [popupHost, popupContent.type]);
 
   // Calculate distance between two points (Haversine formula)
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -199,9 +206,16 @@ const SafetyMap = () => {
     evacLayerRef.current = evacLayer;
     routePointsLayerRef.current = routePointsLayer;
 
-    // Create popup overlay
+    // Create popup overlay host element (OpenLayers will move this element in the DOM)
+    const popupEl = document.createElement('div');
+    popupEl.className = 'ol-popup bg-background rounded-lg shadow-lg border';
+    popupEl.style.position = 'absolute';
+    popupEl.style.minWidth = '120px';
+    popupEl.style.display = 'none';
+    setPopupHost(popupEl);
+
     const overlay = new Overlay({
-      element: popupRef.current!,
+      element: popupEl,
       autoPan: true,
     });
     overlayRef.current = overlay;
@@ -227,6 +241,9 @@ const SafetyMap = () => {
     mapInstanceRef.current = map;
 
     return () => {
+      overlay.setPosition(undefined);
+      popupEl.remove();
+      overlayRef.current = null;
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
@@ -680,49 +697,60 @@ const SafetyMap = () => {
           </div>
         )}
         
-        {/* Popup Container - Use stable DOM structure to avoid React/OpenLayers conflicts */}
-        <div 
-          ref={popupRef} 
-          className="ol-popup bg-background rounded-lg shadow-lg border"
-          style={{ 
-            position: 'absolute', 
-            minWidth: '120px',
-            display: popupContent.type ? 'block' : 'none' 
-          }}
-        >
-          <div className="text-center p-2">
-            {popupContent.type === 'hazard' && popupContent.data ? (
-              <>
-                <span className="text-2xl">{getHazardEmoji(popupContent.data.type)}</span><br/>
-                <strong className={
-                  popupContent.data.severity === 'low' ? 'text-yellow-500' :
-                  popupContent.data.severity === 'medium' ? 'text-orange-500' :
-                  popupContent.data.severity === 'high' ? 'text-red-500' :
-                  'text-red-700'
-                }>{popupContent.data.type}</strong>
-                <p className={`text-xs capitalize font-semibold ${
-                  popupContent.data.severity === 'low' ? 'text-yellow-500' :
-                  popupContent.data.severity === 'medium' ? 'text-orange-500' :
-                  popupContent.data.severity === 'high' ? 'text-red-500' :
-                  'text-red-700'
-                }`}>Severity: {popupContent.data.severity}</p>
-                <p className="text-xs">{popupContent.data.location}</p>
-              </>
-            ) : popupContent.type === 'evac' && popupContent.data ? (
-              <>
-                <span className="text-2xl">🏠</span><br/>
-                <strong className="text-green-600">{popupContent.data.name}</strong>
-                <p className="text-xs">Status: {popupContent.data.status}</p>
-                <p className="text-xs">{popupContent.data.location}</p>
-              </>
-            ) : popupContent.type === 'user' ? (
-              <>
-                <span className="text-xl">📍</span><br/>
-                <strong>Your Location</strong>
-              </>
-            ) : null}
-          </div>
-        </div>
+        {/* Popup UI rendered via portal into the OpenLayers-managed overlay element */}
+        {popupHost &&
+          createPortal(
+            <div className="text-center p-2">
+              {popupContent.type === 'hazard' && popupContent.data ? (
+                <>
+                  <span className="text-2xl">{getHazardEmoji(popupContent.data.type)}</span>
+                  <br />
+                  <strong
+                    className={
+                      popupContent.data.severity === 'low'
+                        ? 'text-yellow-500'
+                        : popupContent.data.severity === 'medium'
+                          ? 'text-orange-500'
+                          : popupContent.data.severity === 'high'
+                            ? 'text-red-500'
+                            : 'text-red-700'
+                    }
+                  >
+                    {popupContent.data.type}
+                  </strong>
+                  <p
+                    className={`text-xs capitalize font-semibold ${
+                      popupContent.data.severity === 'low'
+                        ? 'text-yellow-500'
+                        : popupContent.data.severity === 'medium'
+                          ? 'text-orange-500'
+                          : popupContent.data.severity === 'high'
+                            ? 'text-red-500'
+                            : 'text-red-700'
+                    }`}
+                  >
+                    Severity: {popupContent.data.severity}
+                  </p>
+                  <p className="text-xs">{popupContent.data.location}</p>
+                </>
+              ) : popupContent.type === 'evac' && popupContent.data ? (
+                <>
+                  <span className="text-2xl">🏠</span>
+                  <br />
+                  <strong className="text-green-600">{popupContent.data.name}</strong>
+                  <p className="text-xs">Status: {popupContent.data.status}</p>
+                  <p className="text-xs">{popupContent.data.location}</p>
+                </>
+              ) : popupContent.type === 'user' ? (
+                <>
+                  <span className="text-xl">📍</span>
+                  <br />
+                  <strong>Your Location</strong>
+                </>
+              ) : null}
+            </div>,
+            popupHost
+          )}
 
         {/* Route Info Overlay */}
         {routeGenerated && routeInfo && (
