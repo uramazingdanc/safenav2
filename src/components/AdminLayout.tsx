@@ -148,7 +148,7 @@ const AdminLayout = () => {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {/* Language Switcher */}
               <LanguageSwitcher variant="admin" />
               
@@ -160,12 +160,13 @@ const AdminLayout = () => {
                 Admin
               </Badge>
               
-              {/* Mobile sign out */}
+              {/* Sign out button - visible on all screens */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden text-destructive hover:bg-destructive/10"
+                className="text-destructive hover:bg-destructive/10"
                 onClick={handleSignOut}
+                title="Sign Out"
               >
                 <LogOut className="w-5 h-5" />
               </Button>
