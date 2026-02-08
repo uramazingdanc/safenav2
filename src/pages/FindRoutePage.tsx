@@ -1,11 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Navigation, ArrowLeft, Route, Clock, Ruler, AlertTriangle, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, ArrowLeft, Route, Clock, Ruler, AlertTriangle, Loader2, Crosshair, Building2, Keyboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useActiveHazards } from '@/hooks/useHazards';
+import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
 import MapPickerModal from '@/components/MapPickerModal';
 
 // OpenLayers imports
@@ -26,7 +31,7 @@ import 'ol/ol.css';
 const startPinStyle = new Style({
   image: new Circle({
     radius: 12,
-    fill: new Fill({ color: '#22c55e' }), // Green
+    fill: new Fill({ color: '#22c55e' }),
     stroke: new Stroke({ color: '#ffffff', width: 3 }),
   }),
   text: new OLText({
@@ -39,7 +44,7 @@ const startPinStyle = new Style({
 const endPinStyle = new Style({
   image: new Circle({
     radius: 12,
-    fill: new Fill({ color: '#ef4444' }), // Red
+    fill: new Fill({ color: '#ef4444' }),
     stroke: new Stroke({ color: '#ffffff', width: 3 }),
   }),
   text: new OLText({
@@ -98,14 +103,31 @@ const FindRoutePage = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const { data: hazards = [] } = useActiveHazards();
+  const { data: evacCenters = [] } = useOpenEvacuationCenters();
 
   const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [endCoords, setEndCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [routeGenerated, setRouteGenerated] = useState(false);
-  const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string; hasHazard: boolean } | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string; hasHazard: boolean; hazardCount: number } | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  
+  // Input mode tabs
+  const [startInputMode, setStartInputMode] = useState<'map' | 'coords' | 'location'>('map');
+  const [endInputMode, setEndInputMode] = useState<'map' | 'coords' | 'evac'>('map');
+  
+  // Manual coordinate inputs
+  const [startLatInput, setStartLatInput] = useState('');
+  const [startLngInput, setStartLngInput] = useState('');
+  const [endLatInput, setEndLatInput] = useState('');
+  const [endLngInput, setEndLngInput] = useState('');
+  
+  // Selected evac center
+  const [selectedEvac, setSelectedEvac] = useState<string>('');
+  
+  // Location loading state
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
@@ -128,17 +150,90 @@ const FindRoutePage = () => {
     return R * c;
   };
 
+  // Get user's current location
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: 'Not Supported',
+        description: 'Geolocation is not supported by your browser.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setStartCoords(coords);
+        setStartLatInput(coords.lat.toFixed(6));
+        setStartLngInput(coords.lng.toFixed(6));
+        setIsGettingLocation(false);
+        toast({
+          title: '📍 Location Found',
+          description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}`,
+        });
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        toast({
+          title: 'Location Error',
+          description: error.message || 'Failed to get your location.',
+          variant: 'destructive',
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  // Handle manual coordinate input
+  const handleSetStartCoords = () => {
+    const lat = parseFloat(startLatInput);
+    const lng = parseFloat(startLngInput);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      setStartCoords({ lat, lng });
+      toast({ title: '✅ Start Point Set' });
+    } else {
+      toast({ title: 'Invalid Coordinates', variant: 'destructive' });
+    }
+  };
+
+  const handleSetEndCoords = () => {
+    const lat = parseFloat(endLatInput);
+    const lng = parseFloat(endLngInput);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      setEndCoords({ lat, lng });
+      toast({ title: '✅ Destination Set' });
+    } else {
+      toast({ title: 'Invalid Coordinates', variant: 'destructive' });
+    }
+  };
+
+  // Handle evacuation center selection
+  const handleSelectEvac = (evacId: string) => {
+    setSelectedEvac(evacId);
+    const center = evacCenters.find(c => c.id === evacId);
+    if (center && center.latitude && center.longitude) {
+      setEndCoords({ lat: center.latitude, lng: center.longitude });
+      toast({
+        title: '🏠 Evacuation Center Selected',
+        description: center.name,
+      });
+    }
+  };
+
   // Initialize result map
   useEffect(() => {
     if (!routeGenerated || !mapRef.current) return;
 
-    // Clean up previous map instance
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setTarget(undefined);
       mapInstanceRef.current = null;
     }
 
-    // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
       if (!mapRef.current) return;
 
@@ -192,26 +287,25 @@ const FindRoutePage = () => {
 
     if (!markersSource || !routeSource || !hazardSource) return;
 
-    // Clear previous
     markersSource.clear();
     routeSource.clear();
     hazardSource.clear();
 
-    // Add start marker (green)
+    // Add start marker
     const startFeature = new Feature({
       geometry: new Point(fromLonLat([startCoords.lng, startCoords.lat])),
     });
     startFeature.setStyle(startPinStyle);
     markersSource.addFeature(startFeature);
 
-    // Add end marker (red)
+    // Add end marker
     const endFeature = new Feature({
       geometry: new Point(fromLonLat([endCoords.lng, endCoords.lat])),
     });
     endFeature.setStyle(endPinStyle);
     markersSource.addFeature(endFeature);
 
-    // Generate simple route (straight line with some interpolation)
+    // Generate route line
     const routeCoords = [
       [startCoords.lng, startCoords.lat],
       [(startCoords.lng + endCoords.lng) / 2 + 0.002, (startCoords.lat + endCoords.lat) / 2 + 0.001],
@@ -225,7 +319,7 @@ const FindRoutePage = () => {
     routeSource.addFeature(routeFeature);
 
     // Add hazard markers near route
-    const routeBuffer = 0.02; // ~2km buffer
+    const routeBuffer = 0.02;
     const nearbyHazards = hazards.filter(h => {
       if (!h.latitude || !h.longitude) return false;
       const minLat = Math.min(startCoords.lat, endCoords.lat) - routeBuffer;
@@ -263,22 +357,25 @@ const FindRoutePage = () => {
   const handlePickerConfirm = (coords: { lat: number; lng: number }) => {
     if (pickerMode === 'start') {
       setStartCoords(coords);
+      setStartLatInput(coords.lat.toFixed(6));
+      setStartLngInput(coords.lng.toFixed(6));
     } else {
       setEndCoords(coords);
+      setEndLatInput(coords.lat.toFixed(6));
+      setEndLngInput(coords.lng.toFixed(6));
     }
   };
 
   const handleGenerateRoute = () => {
     if (!startCoords || !endCoords) return;
     
-    // Calculate distance and estimated time
     const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
-    const walkingSpeed = 5; // km/h
+    const walkingSpeed = 5;
     const timeMinutes = Math.round((distance / walkingSpeed) * 60);
 
     // Check for hazards along route
     const routeBuffer = 0.01;
-    const hasHazardOnRoute = hazards.some(h => {
+    const hazardsOnRoute = hazards.filter(h => {
       if (!h.latitude || !h.longitude) return false;
       const midLat = (startCoords.lat + endCoords.lat) / 2;
       const midLng = (startCoords.lng + endCoords.lng) / 2;
@@ -291,21 +388,22 @@ const FindRoutePage = () => {
     setRouteInfo({
       distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`,
       time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
-      hasHazard: hasHazardOnRoute,
+      hasHazard: hazardsOnRoute.length > 0,
+      hazardCount: hazardsOnRoute.length,
     });
 
     setRouteGenerated(true);
 
-    if (hasHazardOnRoute) {
+    if (hazardsOnRoute.length > 0) {
       toast({
         title: '⚠️ Hazard Warning',
-        description: 'Your route passes near known hazard zones. Consider an alternative path.',
+        description: `${hazardsOnRoute.length} hazard(s) detected near your route. Proceed with caution.`,
         variant: 'destructive',
       });
     } else {
       toast({
         title: '✅ Safe Route',
-        description: 'Your route avoids known hazard zones.',
+        description: 'No known hazards detected along your route.',
       });
     }
   };
@@ -316,6 +414,11 @@ const FindRoutePage = () => {
     setStartCoords(null);
     setEndCoords(null);
     setMapReady(false);
+    setStartLatInput('');
+    setStartLngInput('');
+    setEndLatInput('');
+    setEndLngInput('');
+    setSelectedEvac('');
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setTarget(undefined);
       mapInstanceRef.current = null;
@@ -324,7 +427,7 @@ const FindRoutePage = () => {
 
   const canGenerate = startCoords && endCoords;
 
-  // Generate simple directions based on coordinates
+  // Generate directions
   const generateDirections = () => {
     if (!startCoords || !endCoords) return [];
     
@@ -339,7 +442,7 @@ const FindRoutePage = () => {
     
     return [
       { step: 1, instruction: `Start from your current location`, icon: '📍' },
-      { step: 2, instruction: `Head ${nsDirection}${ewDirection !== 'East' && ewDirection !== 'West' ? '' : `-${ewDirection}`}`, icon: '🧭' },
+      { step: 2, instruction: `Head ${nsDirection}${lngDiff !== 0 ? `-${ewDirection}` : ''}`, icon: '🧭' },
       { step: 3, instruction: `Continue for approximately ${distanceStr}`, icon: '🚶' },
       { step: 4, instruction: `Look for landmarks and follow main roads`, icon: '🛤️' },
       { step: 5, instruction: `Arrive at your destination`, icon: '🎯' },
@@ -366,19 +469,28 @@ const FindRoutePage = () => {
 
         {/* Route Info Cards */}
         <div className="p-4 bg-background border-b space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-3 text-center">
                 <Ruler className="w-5 h-5 mx-auto mb-1 text-primary" />
-                <p className="text-xl font-bold text-primary">{routeInfo?.distance}</p>
+                <p className="text-lg font-bold text-primary">{routeInfo?.distance}</p>
                 <p className="text-xs text-muted-foreground">Distance</p>
               </CardContent>
             </Card>
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-3 text-center">
                 <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
-                <p className="text-xl font-bold text-primary">{routeInfo?.time}</p>
-                <p className="text-xs text-muted-foreground">Est. Walking Time</p>
+                <p className="text-lg font-bold text-primary">{routeInfo?.time}</p>
+                <p className="text-xs text-muted-foreground">Walking Time</p>
+              </CardContent>
+            </Card>
+            <Card className={routeInfo?.hasHazard ? 'bg-destructive/10 border-destructive/30' : 'bg-green-50 border-green-200'}>
+              <CardContent className="p-3 text-center">
+                <AlertTriangle className={`w-5 h-5 mx-auto mb-1 ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-600'}`} />
+                <p className={`text-lg font-bold ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-600'}`}>
+                  {routeInfo?.hasHazard ? routeInfo.hazardCount : 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Hazards</p>
               </CardContent>
             </Card>
           </div>
@@ -391,12 +503,12 @@ const FindRoutePage = () => {
               </div>
               <div>
                 <p className={`font-semibold ${routeInfo?.hasHazard ? 'text-destructive' : 'text-green-700'}`}>
-                  {routeInfo?.hasHazard ? 'Caution Required' : 'Route is Clear'}
+                  {routeInfo?.hasHazard ? `⚠️ ${routeInfo.hazardCount} Hazard(s) Present` : '✅ No Hazards Present'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {routeInfo?.hasHazard 
                     ? 'Hazards detected near your route. Proceed with caution.'
-                    : 'No known hazards detected along your route.'}
+                    : 'Your route is clear of known hazards.'}
                 </p>
               </div>
             </CardContent>
@@ -427,7 +539,7 @@ const FindRoutePage = () => {
             </div>
           </div>
 
-          {/* V11-Style Directions Panel */}
+          {/* Directions Panel */}
           <Card className="mx-4 mb-4">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -497,7 +609,7 @@ const FindRoutePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-primary-foreground hover:bg-primary-foreground/10">
@@ -519,6 +631,7 @@ const FindRoutePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Current selection display */}
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[48px]">
               <MapPin className="w-5 h-5 text-green-500 flex-shrink-0" />
               <span className="text-sm flex-1">
@@ -528,14 +641,84 @@ const FindRoutePage = () => {
                 }
               </span>
             </div>
-            <Button 
-              variant="outline" 
-              className="w-full border-green-500 text-green-600 hover:bg-green-50"
-              onClick={() => openPicker('start')}
-            >
-              <MapPin className="w-4 h-4 mr-2" />
-              📍 Pin Start on Map
-            </Button>
+
+            {/* Input mode tabs */}
+            <Tabs value={startInputMode} onValueChange={(v) => setStartInputMode(v as any)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="map" className="text-xs">
+                  <MapPin className="w-3 h-3 mr-1" />
+                  Pick on Map
+                </TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs">
+                  <Keyboard className="w-3 h-3 mr-1" />
+                  Coordinates
+                </TabsTrigger>
+                <TabsTrigger value="location" className="text-xs">
+                  <Crosshair className="w-3 h-3 mr-1" />
+                  My Location
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="map" className="mt-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                  onClick={() => openPicker('start')}
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  📍 Pin Start on Map
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="coords" className="mt-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Latitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="11.5601"
+                      value={startLatInput}
+                      onChange={(e) => setStartLatInput(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Longitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="124.3949"
+                      value={startLngInput}
+                      onChange={(e) => setStartLngInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button variant="outline" className="w-full" onClick={handleSetStartCoords}>
+                  Set Coordinates
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="location" className="mt-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                  onClick={handleUseMyLocation}
+                  disabled={isGettingLocation}
+                >
+                  {isGettingLocation ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Getting Location...
+                    </>
+                  ) : (
+                    <>
+                      <Crosshair className="w-4 h-4 mr-2" />
+                      Use My Current Location
+                    </>
+                  )}
+                </Button>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
@@ -548,23 +731,94 @@ const FindRoutePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Current selection display */}
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[48px]">
               <MapPin className="w-5 h-5 text-red-500 flex-shrink-0" />
               <span className="text-sm flex-1">
                 {endCoords 
-                  ? `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
+                  ? selectedEvac 
+                    ? evacCenters.find(c => c.id === selectedEvac)?.name || `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
+                    : `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
                   : 'Not set'
                 }
               </span>
             </div>
-            <Button 
-              variant="outline" 
-              className="w-full border-red-500 text-red-600 hover:bg-red-50"
-              onClick={() => openPicker('end')}
-            >
-              <MapPin className="w-4 h-4 mr-2" />
-              📍 Pin Destination on Map
-            </Button>
+
+            {/* Input mode tabs */}
+            <Tabs value={endInputMode} onValueChange={(v) => setEndInputMode(v as any)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="map" className="text-xs">
+                  <MapPin className="w-3 h-3 mr-1" />
+                  Pick on Map
+                </TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs">
+                  <Keyboard className="w-3 h-3 mr-1" />
+                  Coordinates
+                </TabsTrigger>
+                <TabsTrigger value="evac" className="text-xs">
+                  <Building2 className="w-3 h-3 mr-1" />
+                  Evac Center
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="map" className="mt-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full border-red-500 text-red-600 hover:bg-red-50"
+                  onClick={() => openPicker('end')}
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  📍 Pin Destination on Map
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="coords" className="mt-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Latitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="11.5601"
+                      value={endLatInput}
+                      onChange={(e) => setEndLatInput(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Longitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="124.3949"
+                      value={endLngInput}
+                      onChange={(e) => setEndLngInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button variant="outline" className="w-full" onClick={handleSetEndCoords}>
+                  Set Coordinates
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="evac" className="mt-3">
+                <Select value={selectedEvac} onValueChange={handleSelectEvac}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an evacuation center" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {evacCenters.length === 0 ? (
+                      <SelectItem value="none" disabled>No evacuation centers available</SelectItem>
+                    ) : (
+                      evacCenters.map((center) => (
+                        <SelectItem key={center.id} value={center.id}>
+                          🏠 {center.name} - {center.location}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 

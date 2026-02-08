@@ -1,16 +1,18 @@
 import { useState, useRef } from 'react';
-import { AlertTriangle, Camera, Send, Loader2, X, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Camera, Send, Loader2, X, ArrowLeft, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateHazardReport } from '@/hooks/useHazardReports';
 import { NAVAL_BARANGAYS } from '@/constants/barangays';
-import MapLocationPicker from '@/components/MapLocationPicker';
+import MapPickerModal from '@/components/MapPickerModal';
 
 const HAZARD_TYPES = [
   { value: 'flooding', label: 'Flooding', icon: '🌊' },
@@ -28,6 +30,10 @@ const ReportHazard = () => {
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [locationMode, setLocationMode] = useState<'map' | 'coords'>('map');
+  const [latInput, setLatInput] = useState('');
+  const [lngInput, setLngInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { t } = useLanguage();
@@ -64,6 +70,23 @@ const ReportHazard = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleSetCoords = () => {
+    const lat = parseFloat(latInput);
+    const lng = parseFloat(lngInput);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      setCoordinates({ lat, lng });
+      toast({ title: '✅ Location Set' });
+    } else {
+      toast({ title: 'Invalid Coordinates', variant: 'destructive' });
+    }
+  };
+
+  const handlePickerConfirm = (coords: { lat: number; lng: number }) => {
+    setCoordinates(coords);
+    setLatInput(coords.lat.toFixed(6));
+    setLngInput(coords.lng.toFixed(6));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,7 +133,6 @@ const ReportHazard = () => {
         description: 'Hazard report submitted successfully. It will be reviewed by administrators.',
       });
       
-      // Navigate back
       navigate(-1);
     } catch (error) {
       toast({
@@ -122,7 +144,7 @@ const ReportHazard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="bg-destructive text-destructive-foreground p-4 flex items-center gap-3">
         <Button 
@@ -183,14 +205,68 @@ const ReportHazard = () => {
                 </Select>
               </div>
 
-              {/* Location Picker */}
-              <MapLocationPicker
-                coordinates={coordinates}
-                onCoordinatesChange={setCoordinates}
-                markerColor="#dc2626"
-                label="Exact Location *"
-                compact
-              />
+              {/* Location Input */}
+              <div className="space-y-2">
+                <Label>Exact Location *</Label>
+                <Tabs value={locationMode} onValueChange={(v) => setLocationMode(v as any)}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="map" className="text-xs">
+                      <MapPin className="w-3 h-3 mr-1" />
+                      Pick on Map
+                    </TabsTrigger>
+                    <TabsTrigger value="coords" className="text-xs">
+                      Coordinates
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="map" className="mt-3">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => setIsPickerOpen(true)}
+                    >
+                      <MapPin className="w-4 h-4 mr-2" />
+                      📍 Pick Location on Map
+                    </Button>
+                  </TabsContent>
+
+                  <TabsContent value="coords" className="mt-3 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Latitude</Label>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder="11.5601"
+                          value={latInput}
+                          onChange={(e) => setLatInput(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Longitude</Label>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder="124.3949"
+                          value={lngInput}
+                          onChange={(e) => setLngInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <Button type="button" variant="outline" className="w-full" onClick={handleSetCoords}>
+                      Set Coordinates
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+
+                {coordinates && (
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+                  </p>
+                )}
+              </div>
 
               {/* Description */}
               <div className="space-y-2">
@@ -262,6 +338,15 @@ const ReportHazard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Map Picker Modal */}
+      <MapPickerModal
+        open={isPickerOpen}
+        onOpenChange={setIsPickerOpen}
+        onConfirm={handlePickerConfirm}
+        mode="end"
+        initialCoords={coordinates}
+      />
     </div>
   );
 };

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { LogOut, Loader2, MapPin, Phone as PhoneIcon, Map, Phone } from 'lucide-react';
+import { LogOut, Loader2, MapPin, Phone as PhoneIcon, Map, Phone, AlertTriangle, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -85,9 +85,10 @@ const UserProfile = () => {
   // Get verification status from profile
   const verificationStatus = (profile as any)?.verification_status || 'unverified';
   const adminNotes = (profile as any)?.admin_notes;
+  const isVerified = verificationStatus === 'verified';
 
   return (
-    <div className="min-h-screen bg-secondary/30">
+    <div className="min-h-screen bg-secondary/30 pb-20">
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 pb-6">
         <h1 className="text-xl font-bold">Profile</h1>
@@ -95,18 +96,18 @@ const UserProfile = () => {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Profile Card */}
+        {/* Profile Card - Simplified, no circles */}
         <Card className="border-border">
           <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <Avatar className="w-14 h-14">
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center text-lg font-bold">
                   {profile?.full_name ? getInitials(profile.full_name) : 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-primary">{profile?.full_name || 'User'}</h2>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">{profile?.full_name || 'User'}</h2>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
+                </div>
               </div>
               <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                 <DialogTrigger asChild>
@@ -169,33 +170,65 @@ const UserProfile = () => {
             </div>
 
             {/* Contact Details */}
-            <div className="mt-4 space-y-3">
-              {profile?.phone_number && (
-                <div className="flex items-center gap-3">
-                  <PhoneIcon className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Phone Number</p>
-                    <p className="text-sm font-medium text-primary">{profile.phone_number}</p>
-                  </div>
+            <div className="space-y-2 text-sm">
+              {profile?.barangay && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>Barangay {profile.barangay}</span>
                 </div>
               )}
-              
-              <div className="flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Barangay</p>
-                  <p className="text-sm font-medium text-primary">{profile?.barangay || 'Not set'}</p>
+              {profile?.phone_number && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <PhoneIcon className="w-4 h-4" />
+                  <span>{profile.phone_number}</span>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Verification Section */}
+        {/* Verification Status Section */}
         <ProfileVerification 
           verificationStatus={verificationStatus}
           adminNotes={adminNotes}
         />
+
+        {/* Report Hazard Button - Only for verified users */}
+        <Card className="border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold">Report a Hazard</h3>
+                <p className="text-xs text-muted-foreground">
+                  {isVerified 
+                    ? 'Help keep your community safe by reporting hazards.'
+                    : 'You must be verified to report hazards.'}
+                </p>
+              </div>
+            </div>
+            <Button 
+              className="w-full mt-3" 
+              variant={isVerified ? 'default' : 'outline'}
+              onClick={() => isVerified && navigate('/report')}
+              disabled={!isVerified}
+            >
+              {isVerified ? (
+                <>
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Report Hazard
+                </>
+              ) : (
+                <>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Get Verified First
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Quick Links */}
         <Card className="border-border">

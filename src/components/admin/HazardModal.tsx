@@ -288,15 +288,7 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
               disabled={createHazard.isPending}
             >
               {createHazard.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Save Hazard
-            </Button>
-            <Button
-              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
-              onClick={() => handleSubmit(true)}
-              disabled={createHazard.isPending}
-            >
-              <Radio className="w-4 h-4 mr-2" />
-              Broadcast Alert
+              Add Hazard
             </Button>
           </div>
         </div>
