@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Map, Layers, AlertTriangle, Building2, Users, Plus, Move, Radio, Eye, EyeOff, Info } from 'lucide-react';
+import { Map, Layers, AlertTriangle, Building2, Users, Radio, Eye, EyeOff, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -50,7 +50,7 @@ const AdminMap = () => {
   const [isEvacModalOpen, setIsEvacModalOpen] = useState(false);
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
-  const [addMode, setAddMode] = useState<'hazard' | 'evac' | null>(null);
+  
 
   // Filter toggles
   const [showHazards, setShowHazards] = useState(true);
@@ -145,24 +145,13 @@ const AdminMap = () => {
       } else {
         popup.setPosition(undefined);
         setSelectedFeature(null);
-        
-        if (addMode) {
-          const coords = toLonLat(evt.coordinate);
-          setClickedCoords({ lat: coords[1], lng: coords[0] });
-          if (addMode === 'hazard') {
-            setIsHazardModalOpen(true);
-          } else {
-            setIsEvacModalOpen(true);
-          }
-          setAddMode(null);
-        }
       }
     });
 
     // Cursor change on hover
     map.on('pointermove', (evt) => {
       const hit = map.hasFeatureAtPixel(evt.pixel);
-      map.getTargetElement().style.cursor = addMode ? 'crosshair' : (hit ? 'pointer' : '');
+      map.getTargetElement().style.cursor = hit ? 'pointer' : '';
     });
 
     mapInstanceRef.current = map;
@@ -236,48 +225,6 @@ const AdminMap = () => {
           <Radio className="w-3 h-3 text-emerald-400 animate-pulse ml-auto" />
         </div>
 
-        {/* Add Mode Buttons */}
-        <Card className="bg-slate-900/50 border-slate-700">
-          <CardContent className="p-4 space-y-2">
-            <Button
-              className={`w-full ${addMode === 'hazard' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-orange-600 hover:bg-orange-700'}`}
-              onClick={() => setAddMode(addMode === 'hazard' ? null : 'hazard')}
-            >
-              {addMode === 'hazard' ? (
-                <>
-                  <Move className="w-4 h-4 mr-2" />
-                  Click to Place Hazard
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Add Hazard
-                </>
-              )}
-            </Button>
-            <Button
-              className={`w-full ${addMode === 'evac' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-              onClick={() => setAddMode(addMode === 'evac' ? null : 'evac')}
-            >
-              {addMode === 'evac' ? (
-                <>
-                  <Move className="w-4 h-4 mr-2" />
-                  Click to Place Center
-                </>
-              ) : (
-                <>
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Add Evac Center
-                </>
-              )}
-            </Button>
-            {addMode && (
-              <p className="text-xs text-slate-400 text-center">
-                Click anywhere on the map to add a marker
-              </p>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Layer Filters */}
         <Card className="bg-slate-900/50 border-slate-700">
@@ -397,21 +344,6 @@ const AdminMap = () => {
       <div className="flex-1 relative">
         <div ref={mapRef} className="w-full h-full" />
 
-        {/* Mobile Add Buttons */}
-        <div className="md:hidden absolute bottom-20 right-4 z-10 flex flex-col gap-2">
-          <Button
-            className={`rounded-full w-14 h-14 shadow-lg ${addMode === 'evac' ? 'bg-teal-600' : 'bg-emerald-600'}`}
-            onClick={() => setAddMode(addMode === 'evac' ? null : 'evac')}
-          >
-            {addMode === 'evac' ? <Move className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
-          </Button>
-          <Button
-            className={`rounded-full w-14 h-14 shadow-lg ${addMode === 'hazard' ? 'bg-rose-600' : 'bg-orange-600'}`}
-            onClick={() => setAddMode(addMode === 'hazard' ? null : 'hazard')}
-          >
-            {addMode === 'hazard' ? <Move className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
-          </Button>
-        </div>
 
         {/* Mobile Legend Toggle */}
         <Button
