@@ -680,44 +680,48 @@ const SafetyMap = () => {
           </div>
         )}
         
-        {/* Popup Container - Rendered via React state to avoid DOM conflicts */}
+        {/* Popup Container - Use stable DOM structure to avoid React/OpenLayers conflicts */}
         <div 
           ref={popupRef} 
           className="ol-popup bg-background rounded-lg shadow-lg border"
-          style={{ position: 'absolute', minWidth: '120px' }}
+          style={{ 
+            position: 'absolute', 
+            minWidth: '120px',
+            display: popupContent.type ? 'block' : 'none' 
+          }}
         >
-          {popupContent.type === 'hazard' && popupContent.data && (
-            <div className="text-center p-2">
-              <span className="text-2xl">{getHazardEmoji(popupContent.data.type)}</span><br/>
-              <strong className={
-                popupContent.data.severity === 'low' ? 'text-yellow-500' :
-                popupContent.data.severity === 'medium' ? 'text-orange-500' :
-                popupContent.data.severity === 'high' ? 'text-red-500' :
-                'text-red-700'
-              }>{popupContent.data.type}</strong>
-              <p className={`text-xs capitalize font-semibold ${
-                popupContent.data.severity === 'low' ? 'text-yellow-500' :
-                popupContent.data.severity === 'medium' ? 'text-orange-500' :
-                popupContent.data.severity === 'high' ? 'text-red-500' :
-                'text-red-700'
-              }`}>Severity: {popupContent.data.severity}</p>
-              <p className="text-xs">{popupContent.data.location}</p>
-            </div>
-          )}
-          {popupContent.type === 'evac' && popupContent.data && (
-            <div className="text-center p-2">
-              <span className="text-2xl">🏠</span><br/>
-              <strong className="text-green-600">{popupContent.data.name}</strong>
-              <p className="text-xs">Status: {popupContent.data.status}</p>
-              <p className="text-xs">{popupContent.data.location}</p>
-            </div>
-          )}
-          {popupContent.type === 'user' && (
-            <div className="text-center p-2">
-              <span className="text-xl">📍</span><br/>
-              <strong>Your Location</strong>
-            </div>
-          )}
+          <div className="text-center p-2">
+            {popupContent.type === 'hazard' && popupContent.data ? (
+              <>
+                <span className="text-2xl">{getHazardEmoji(popupContent.data.type)}</span><br/>
+                <strong className={
+                  popupContent.data.severity === 'low' ? 'text-yellow-500' :
+                  popupContent.data.severity === 'medium' ? 'text-orange-500' :
+                  popupContent.data.severity === 'high' ? 'text-red-500' :
+                  'text-red-700'
+                }>{popupContent.data.type}</strong>
+                <p className={`text-xs capitalize font-semibold ${
+                  popupContent.data.severity === 'low' ? 'text-yellow-500' :
+                  popupContent.data.severity === 'medium' ? 'text-orange-500' :
+                  popupContent.data.severity === 'high' ? 'text-red-500' :
+                  'text-red-700'
+                }`}>Severity: {popupContent.data.severity}</p>
+                <p className="text-xs">{popupContent.data.location}</p>
+              </>
+            ) : popupContent.type === 'evac' && popupContent.data ? (
+              <>
+                <span className="text-2xl">🏠</span><br/>
+                <strong className="text-green-600">{popupContent.data.name}</strong>
+                <p className="text-xs">Status: {popupContent.data.status}</p>
+                <p className="text-xs">{popupContent.data.location}</p>
+              </>
+            ) : popupContent.type === 'user' ? (
+              <>
+                <span className="text-xl">📍</span><br/>
+                <strong>Your Location</strong>
+              </>
+            ) : null}
+          </div>
         </div>
 
         {/* Route Info Overlay */}
