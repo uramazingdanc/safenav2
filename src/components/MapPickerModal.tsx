@@ -44,17 +44,20 @@ const MapPickerModal = ({
   useEffect(() => {
     if (!open || !mapRef.current) return;
 
-    // Small delay to ensure container is rendered
+    // Cleanup existing map first
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setTarget(undefined);
+      mapInstanceRef.current = null;
+    }
+
+    // Longer delay to ensure dialog is fully rendered and has dimensions
     const initTimer = setTimeout(() => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.updateSize();
-        return;
-      }
+      if (!mapRef.current) return;
 
       const initialCenter = initialCoords || defaultCenter;
 
       const map = new OLMap({
-        target: mapRef.current!,
+        target: mapRef.current,
         layers: [
           new TileLayer({ source: new OSM() }),
         ],
@@ -75,12 +78,17 @@ const MapPickerModal = ({
       });
 
       mapInstanceRef.current = map;
-    }, 100);
+
+      // Force resize after a short delay to ensure tiles load
+      setTimeout(() => {
+        map.updateSize();
+      }, 100);
+    }, 200);
 
     return () => {
       clearTimeout(initTimer);
     };
-  }, [open, initialCoords]);
+  }, [open]);
 
   // Cleanup map on close
   useEffect(() => {
@@ -101,8 +109,8 @@ const MapPickerModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-full h-[90vh] p-0 gap-0 sm:max-w-[95vw]">
-        <DialogHeader className="p-4 pb-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <DialogContent className="max-w-[95vw] w-full h-[85vh] p-0 gap-0 flex flex-col">
+        <DialogHeader className="p-4 pb-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <MapPin className={`w-5 h-5 ${pinColor}`} />
             Set {modeLabel} Location
@@ -113,8 +121,8 @@ const MapPickerModal = ({
         </DialogHeader>
 
         {/* Map Container */}
-        <div className="relative flex-1 h-full min-h-[400px]">
-          <div ref={mapRef} className="w-full h-full" />
+        <div className="relative flex-1 min-h-0">
+          <div ref={mapRef} style={{ width: '100%', height: '100%', minHeight: '300px' }} />
 
           {/* Fixed Center Pin (Crosshair) */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-10 pointer-events-none">
