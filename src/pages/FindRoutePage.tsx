@@ -127,7 +127,7 @@ const FindRoutePage = () => {
   const [mapReady, setMapReady] = useState(false);
   
   // Input mode tabs
-  const [startInputMode, setStartInputMode] = useState<'map' | 'coords' | 'location'>('map');
+  const [startInputMode, setStartInputMode] = useState<'map' | 'coords'>('map');
   const [endInputMode, setEndInputMode] = useState<'map' | 'coords' | 'evac'>('map');
   
   // Manual coordinate inputs
@@ -748,8 +748,8 @@ const FindRoutePage = () => {
             </div>
 
             {/* Input mode tabs */}
-            <Tabs value={startInputMode} onValueChange={(v) => setStartInputMode(v as any)}>
-              <TabsList className="grid w-full grid-cols-3">
+            <Tabs value={startInputMode} onValueChange={(v) => setStartInputMode(v as 'map' | 'coords')}>
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="map" className="text-xs">
                   <MapPin className="w-3 h-3 mr-1" />
                   Pick on Map
@@ -757,10 +757,6 @@ const FindRoutePage = () => {
                 <TabsTrigger value="coords" className="text-xs">
                   <Keyboard className="w-3 h-3 mr-1" />
                   Coordinates
-                </TabsTrigger>
-                <TabsTrigger value="location" className="text-xs">
-                  <Crosshair className="w-3 h-3 mr-1" />
-                  My Location
                 </TabsTrigger>
               </TabsList>
 
@@ -800,27 +796,6 @@ const FindRoutePage = () => {
                 </div>
                 <Button variant="outline" className="w-full" onClick={handleSetStartCoords}>
                   Set Coordinates
-                </Button>
-              </TabsContent>
-
-              <TabsContent value="location" className="mt-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full border-green-500 text-green-600 hover:bg-green-50"
-                  onClick={handleUseMyLocation}
-                  disabled={isGettingLocation}
-                >
-                  {isGettingLocation ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Getting Location...
-                    </>
-                  ) : (
-                    <>
-                      <Crosshair className="w-4 h-4 mr-2" />
-                      Use My Current Location
-                    </>
-                  )}
                 </Button>
               </TabsContent>
             </Tabs>
