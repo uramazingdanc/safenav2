@@ -137,6 +137,11 @@ const SafetyMap = () => {
   const [selectionMode, setSelectionMode] = useState<'start' | 'end' | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [activeTab, setActiveTab] = useState('map');
+  const [popupContent, setPopupContent] = useState<{
+    type: 'hazard' | 'evac' | 'user' | null;
+    data: any;
+    position: number[] | null;
+  }>({ type: null, data: null, position: null });
   const { t } = useLanguage();
   const { toast } = useToast();
 
@@ -255,47 +260,43 @@ const SafetyMap = () => {
         return;
       }
 
-      // Otherwise show popup
+      // Otherwise show popup via React state (not direct DOM manipulation)
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
       if (feature) {
         const coordinates = (feature.getGeometry() as Point).getCoordinates();
-        const name = feature.get('name');
         const featureType = feature.get('featureType');
-        const type = feature.get('type');
-        const severity = feature.get('severity');
-        const status = feature.get('status');
-        const location = feature.get('location');
-
-        if (popupRef.current && overlayRef.current) {
-          let content = '';
-          if (featureType === 'hazard') {
-            const emoji = getHazardEmoji(type);
-            const severityColors: Record<string, string> = {
-              low: 'text-yellow-500',
-              medium: 'text-orange-500',
-              high: 'text-red-500',
-              critical: 'text-red-700',
-            };
-            content = `<div class="text-center p-2">
-              <span class="text-2xl">${emoji}</span><br/>
-              <strong class="${severityColors[severity] || 'text-red-600'}">${type}</strong>
-              <p class="text-xs capitalize font-semibold ${severityColors[severity]}">Severity: ${severity}</p>
-              <p class="text-xs">${location}</p>
-            </div>`;
-          } else if (featureType === 'evac') {
-            content = `<div class="text-center p-2">
-              <span class="text-2xl">🏠</span><br/>
-              <strong class="text-green-600">${name}</strong>
-              <p class="text-xs">Status: ${status}</p>
-              <p class="text-xs">${location}</p>
-            </div>`;
-          } else if (featureType === 'user') {
-            content = `<div class="text-center p-2"><span class="text-xl">📍</span><br/><strong>Your Location</strong></div>`;
-          }
-          popupRef.current.innerHTML = content;
-          overlayRef.current.setPosition(coordinates);
+        
+        if (featureType === 'hazard') {
+          setPopupContent({
+            type: 'hazard',
+            data: {
+              type: feature.get('type'),
+              severity: feature.get('severity'),
+              location: feature.get('location'),
+            },
+            position: coordinates,
+          });
+        } else if (featureType === 'evac') {
+          setPopupContent({
+            type: 'evac',
+            data: {
+              name: feature.get('name'),
+              status: feature.get('status'),
+              location: feature.get('location'),
+            },
+            position: coordinates,
+          });
+        } else if (featureType === 'user') {
+          setPopupContent({
+            type: 'user',
+            data: {},
+            position: coordinates,
+          });
         }
+        
+        overlayRef.current?.setPosition(coordinates);
       } else if (!selectionMode) {
+        setPopupContent({ type: null, data: null, position: null });
         overlayRef.current?.setPosition(undefined);
       }
     };
@@ -679,12 +680,45 @@ const SafetyMap = () => {
           </div>
         )}
         
-        {/* Popup Container */}
+        {/* Popup Container - Rendered via React state to avoid DOM conflicts */}
         <div 
           ref={popupRef} 
           className="ol-popup bg-background rounded-lg shadow-lg border"
           style={{ position: 'absolute', minWidth: '120px' }}
-        />
+        >
+          {popupContent.type === 'hazard' && popupContent.data && (
+            <div className="text-center p-2">
+              <span className="text-2xl">{getHazardEmoji(popupContent.data.type)}</span><br/>
+              <strong className={
+                popupContent.data.severity === 'low' ? 'text-yellow-500' :
+                popupContent.data.severity === 'medium' ? 'text-orange-500' :
+                popupContent.data.severity === 'high' ? 'text-red-500' :
+                'text-red-700'
+              }>{popupContent.data.type}</strong>
+              <p className={`text-xs capitalize font-semibold ${
+                popupContent.data.severity === 'low' ? 'text-yellow-500' :
+                popupContent.data.severity === 'medium' ? 'text-orange-500' :
+                popupContent.data.severity === 'high' ? 'text-red-500' :
+                'text-red-700'
+              }`}>Severity: {popupContent.data.severity}</p>
+              <p className="text-xs">{popupContent.data.location}</p>
+            </div>
+          )}
+          {popupContent.type === 'evac' && popupContent.data && (
+            <div className="text-center p-2">
+              <span className="text-2xl">🏠</span><br/>
+              <strong className="text-green-600">{popupContent.data.name}</strong>
+              <p className="text-xs">Status: {popupContent.data.status}</p>
+              <p className="text-xs">{popupContent.data.location}</p>
+            </div>
+          )}
+          {popupContent.type === 'user' && (
+            <div className="text-center p-2">
+              <span className="text-xl">📍</span><br/>
+              <strong>Your Location</strong>
+            </div>
+          )}
+        </div>
 
         {/* Route Info Overlay */}
         {routeGenerated && routeInfo && (
