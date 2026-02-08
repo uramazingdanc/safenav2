@@ -33,8 +33,8 @@ const LanguageSwitcher = ({ variant = 'default' }: LanguageSwitcherProps) => {
           className={cn(
             'gap-2',
             variant === 'admin' 
-              ? 'text-white/70 hover:text-white hover:bg-command-muted' 
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'text-white/70 hover:text-white hover:bg-command-muted bg-slate-700' 
+              : 'text-muted-foreground hover:text-foreground bg-secondary'
           )}
         >
           <Globe className="w-4 h-4" />

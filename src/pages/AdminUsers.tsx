@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Search, Filter, MoreVertical, Eye, KeyRound, Ban, CheckCircle, Radio, Loader2 } from 'lucide-react';
+import { Users, Search, Filter, MoreVertical, Eye, Trash2, CheckCircle, Radio, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,22 +19,45 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRealtimeUsers } from '@/hooks/useRealtimeUsers';
 import { useVerifyUser } from '@/hooks/useUnverifiedUsers';
+import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const AdminUsers = () => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; userId: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { data: profiles, isLoading } = useRealtimeUsers();
   const verifyUser = useVerifyUser();
+  const queryClient = useQueryClient();
 
-  const filteredUsers = profiles?.filter(user => 
-    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.barangay?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Filter users based on search and status
+  const filteredUsers = profiles?.filter(user => {
+    const matchesSearch = 
+      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.barangay?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (filterStatus === 'all') return matchesSearch;
+    if (filterStatus === 'verified') return matchesSearch && user.is_verified;
+    if (filterStatus === 'unverified') return matchesSearch && !user.is_verified;
+    return matchesSearch;
+  }) || [];
 
   const getInitials = (name: string) => {
     return name
@@ -67,7 +90,7 @@ const AdminUsers = () => {
     }
     return (
       <Badge className="bg-amber-500/20 text-amber-400 border-0">
-        Pending
+        Unverified
       </Badge>
     );
   };
@@ -78,6 +101,47 @@ const AdminUsers = () => {
       toast.success('User verified successfully');
     } catch (error) {
       toast.error('Failed to verify user');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete from profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userToDelete.userId);
+      
+      if (profileError) throw profileError;
+
+      // Delete from user_roles table
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userToDelete.userId);
+
+      // Delete hazard reports by this user
+      await supabase
+        .from('hazard_reports')
+        .delete()
+        .eq('reporter_id', userToDelete.userId);
+
+      // Note: Deleting from auth.users requires admin privileges
+      // This would need an edge function or admin action
+      
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['realtime-users'] });
+      
+      toast.success(`User "${userToDelete.name}" has been removed`);
+      setUserToDelete(null);
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast.error(error.message || 'Failed to delete user');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -121,10 +185,34 @@ const AdminUsers = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              <Filter className="w-4 h-4 mr-2" />
+              {filterStatus === 'all' ? 'All' : filterStatus === 'verified' ? 'Verified' : 'Unverified'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-slate-800 border-slate-700">
+            <DropdownMenuItem 
+              onClick={() => setFilterStatus('all')}
+              className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
+            >
+              All Users
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => setFilterStatus('verified')}
+              className="text-emerald-400 hover:text-emerald-300 hover:bg-slate-700 cursor-pointer"
+            >
+              Verified Only
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => setFilterStatus('unverified')}
+              className="text-amber-400 hover:text-amber-300 hover:bg-slate-700 cursor-pointer"
+            >
+              Unverified Only
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Users Table */}
@@ -196,13 +284,16 @@ const AdminUsers = () => {
                               Verify User
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer">
-                            <KeyRound className="w-4 h-4 mr-2" />
-                            Reset Password
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-rose-400 hover:text-rose-300 hover:bg-slate-700 cursor-pointer">
-                            <Ban className="w-4 h-4 mr-2" />
-                            Ban User
+                          <DropdownMenuItem 
+                            className="text-rose-400 hover:text-rose-300 hover:bg-slate-700 cursor-pointer"
+                            onClick={() => setUserToDelete({ 
+                              id: user.id, 
+                              name: user.full_name, 
+                              userId: user.user_id 
+                            })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete User
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -219,8 +310,44 @@ const AdminUsers = () => {
       <div className="flex gap-4 text-sm text-slate-400">
         <span>Total: {profiles?.length || 0}</span>
         <span className="text-emerald-400">Verified: {verifiedCount}</span>
-        <span className="text-amber-400">Pending: {unverifiedCount}</span>
+        <span className="text-amber-400">Unverified: {unverifiedCount}</span>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete User</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <strong className="text-white">"{userToDelete?.name}"</strong>? 
+              This will permanently remove their profile, verification data, and all hazard reports they submitted.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete User
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

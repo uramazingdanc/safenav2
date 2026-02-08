@@ -31,7 +31,7 @@ const EmergencyHotlines = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="bg-destructive text-destructive-foreground p-4 pb-6">
         <div className="flex items-center gap-3">
@@ -54,16 +54,17 @@ const EmergencyHotlines = () => {
               {emergencyServices.map((service) => (
                 <div
                   key={service.name + service.number}
-                  className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => handleCall(service.number)}
+                  className="flex items-center justify-between p-4"
                 >
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-foreground">{service.name}</p>
-                    <p className="text-sm text-muted-foreground">{service.number}</p>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Phone className="w-3 h-3" />
-                    Call
+                  <Button 
+                    onClick={() => handleCall(service.number)}
+                    className="gap-2 bg-destructive hover:bg-destructive/90"
+                  >
+                    <Phone className="w-4 h-4" />
+                    {service.number}
                   </Button>
                 </div>
               ))}
@@ -81,16 +82,17 @@ const EmergencyHotlines = () => {
               {nationalHotlines.map((hotline) => (
                 <div
                   key={hotline.name}
-                  className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => handleCall(hotline.number)}
+                  className="flex items-center justify-between p-4"
                 >
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-foreground">{hotline.name}</p>
-                    <p className="text-sm text-muted-foreground">{hotline.number}</p>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Phone className="w-3 h-3" />
-                    Call
+                  <Button 
+                    onClick={() => handleCall(hotline.number)}
+                    className="gap-2 bg-destructive hover:bg-destructive/90"
+                  >
+                    <Phone className="w-4 h-4" />
+                    {hotline.number}
                   </Button>
                 </div>
               ))}
