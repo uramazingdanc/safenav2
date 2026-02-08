@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Navigation, ArrowLeft, Route, Clock, Ruler, AlertTriangle, Loader2, Crosshair, Building2, Keyboard } from 'lucide-react';
+import { MapPin, Navigation, ArrowLeft, Route, Clock, Ruler, AlertTriangle, Loader2, Crosshair, Building2, Keyboard, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useActiveHazards } from '@/hooks/useHazards';
 import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
 import MapPickerModal from '@/components/MapPickerModal';
+import { useGenerateRoute, type RouteDirection } from '@/hooks/useGenerateRoute';
 
 // OpenLayers imports
 import OLMap from 'ol/Map';
@@ -115,9 +116,14 @@ const FindRoutePage = () => {
     time: string; 
     hasHazard: boolean; 
     hazardCount: number;
-    directions: Array<{ instruction: string; distance: string; hasHazard?: boolean; hazardType?: string }>;
+    directions: Array<{ instruction: string; distance: string; hasHazard?: boolean; hazardType?: string; hazardWarning?: string }>;
     nearbyEvacCount: number;
+    summary?: string;
   } | null>(null);
+  const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
+  
+  // AI route generation hook
+  const generateRouteMutation = useGenerateRoute();
   const [mapReady, setMapReady] = useState(false);
   
   // Input mode tabs
@@ -373,8 +379,8 @@ const FindRoutePage = () => {
     }
   };
 
-  // Generate realistic street names for route
-  const generateStreetNames = (): string[] => {
+  // Fallback: Generate simulated street names for route when AI fails
+  const generateFallbackDirections = (totalDistance: number, hazardsOnRoute: typeof hazards) => {
     const streets = [
       'Biliran Circumferential Road',
       'Caneja Street',
@@ -389,11 +395,46 @@ const FindRoutePage = () => {
     ];
     // Shuffle and pick 4-6 streets
     const shuffled = streets.sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 4 + Math.floor(Math.random() * 3));
+    const selectedStreets = shuffled.slice(0, 4 + Math.floor(Math.random() * 3));
+    
+    const segmentDistances: number[] = [];
+    let remainingDist = totalDistance;
+    
+    // Distribute distance across segments
+    for (let i = 0; i < selectedStreets.length; i++) {
+      if (i === selectedStreets.length - 1) {
+        segmentDistances.push(remainingDist);
+      } else {
+        const segment = remainingDist * (0.15 + Math.random() * 0.25);
+        segmentDistances.push(segment);
+        remainingDist -= segment;
+      }
+    }
+
+    // Create detailed directions
+    return selectedStreets.map((street, idx) => {
+      const segmentDist = segmentDistances[idx];
+      const distStr = segmentDist < 1 
+        ? `${Math.round(segmentDist * 1000)} m` 
+        : `${segmentDist.toFixed(2)} km`;
+      
+      // Check if any hazard is near this segment
+      const segmentHasHazard = hazardsOnRoute.length > 0 && idx === Math.floor(selectedStreets.length / 2);
+      const hazardNearby = segmentHasHazard ? hazardsOnRoute[0] : null;
+      
+      return {
+        instruction: `on ${street}`,
+        distance: `(${distStr})`,
+        hasHazard: segmentHasHazard,
+        hazardType: hazardNearby?.type,
+      };
+    });
   };
 
-  const handleGenerateRoute = () => {
+  const handleGenerateRoute = async () => {
     if (!startCoords || !endCoords) return;
+    
+    setIsGeneratingRoute(true);
     
     const totalDistance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
     const walkingSpeed = 5;
@@ -422,65 +463,86 @@ const FindRoutePage = () => {
       return dist < 5; // Within 5km
     });
 
-    // Generate detailed directions with street names and distances
-    const streets = generateStreetNames();
-    const segmentDistances: number[] = [];
-    let remainingDist = totalDistance;
-    
-    // Distribute distance across segments
-    for (let i = 0; i < streets.length; i++) {
-      if (i === streets.length - 1) {
-        segmentDistances.push(remainingDist);
+    try {
+      // Try AI-powered route generation
+      const aiResponse = await generateRouteMutation.mutateAsync({
+        startCoords,
+        endCoords,
+        hazards: hazardsOnRoute.map(h => ({
+          type: h.type,
+          severity: h.severity,
+          lat: h.latitude!,
+          lng: h.longitude!,
+          description: h.description || undefined,
+        })),
+        totalDistance,
+        walkingTime: timeMinutes,
+      });
+
+      // Format AI directions to match expected format
+      const formattedDirections = aiResponse.directions.map(dir => ({
+        instruction: dir.instruction,
+        distance: dir.distance.startsWith('(') ? dir.distance : `(${dir.distance})`,
+        hasHazard: dir.hasHazard,
+        hazardType: dir.hazardType,
+        hazardWarning: dir.hazardWarning,
+      }));
+
+      setRouteInfo({
+        distance: totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`,
+        time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
+        hasHazard: aiResponse.hazardStatus === 'HAZARDS_PRESENT',
+        hazardCount: hazardsOnRoute.length,
+        directions: formattedDirections,
+        nearbyEvacCount: nearbyEvacCenters.length,
+        summary: aiResponse.summary,
+      });
+
+      setRouteGenerated(true);
+
+      if (aiResponse.hazardStatus === 'HAZARDS_PRESENT') {
+        toast({
+          title: '⚠️ Hazard Warning',
+          description: aiResponse.summary || `${hazardsOnRoute.length} hazard(s) detected near your route.`,
+          variant: 'destructive',
+        });
       } else {
-        const segment = remainingDist * (0.15 + Math.random() * 0.25);
-        segmentDistances.push(segment);
-        remainingDist -= segment;
+        toast({
+          title: '✅ Safe Route Generated',
+          description: 'AI-powered directions ready. No known hazards along your route.',
+        });
       }
-    }
-
-    // Create detailed directions
-    const detailedDirections = streets.map((street, idx) => {
-      const segmentDist = segmentDistances[idx];
-      const distStr = segmentDist < 1 
-        ? `${Math.round(segmentDist * 1000)} m` 
-        : `${segmentDist.toFixed(2)} km`;
+    } catch (error) {
+      console.error('AI route generation failed, using fallback:', error);
       
-      // Check if any hazard is near this segment
-      const segmentHasHazard = hazardsOnRoute.length > 0 && idx === Math.floor(streets.length / 2);
-      const hazardNearby = segmentHasHazard ? hazardsOnRoute[0] : null;
-      
-      return {
-        instruction: idx === 0 
-          ? `on ${street}` 
-          : `on ${street}`,
-        distance: `(${distStr})`,
-        hasHazard: segmentHasHazard,
-        hazardType: hazardNearby?.type,
-      };
-    });
+      // Fallback to simulated directions
+      const fallbackDirections = generateFallbackDirections(totalDistance, hazardsOnRoute);
 
-    setRouteInfo({
-      distance: totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`,
-      time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
-      hasHazard: hazardsOnRoute.length > 0,
-      hazardCount: hazardsOnRoute.length,
-      directions: detailedDirections,
-      nearbyEvacCount: nearbyEvacCenters.length,
-    });
-
-    setRouteGenerated(true);
-
-    if (hazardsOnRoute.length > 0) {
-      toast({
-        title: '⚠️ Hazard Warning',
-        description: `${hazardsOnRoute.length} hazard(s) detected near your route. Proceed with caution.`,
-        variant: 'destructive',
+      setRouteInfo({
+        distance: totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`,
+        time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
+        hasHazard: hazardsOnRoute.length > 0,
+        hazardCount: hazardsOnRoute.length,
+        directions: fallbackDirections,
+        nearbyEvacCount: nearbyEvacCenters.length,
       });
-    } else {
+
+      setRouteGenerated(true);
+
       toast({
-        title: '✅ Safe Route',
-        description: 'No known hazards detected along your route.',
+        title: '📍 Route Generated',
+        description: 'Using estimated directions. AI service temporarily unavailable.',
       });
+
+      if (hazardsOnRoute.length > 0) {
+        toast({
+          title: '⚠️ Hazard Warning',
+          description: `${hazardsOnRoute.length} hazard(s) detected near your route. Proceed with caution.`,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsGeneratingRoute(false);
     }
   };
 
@@ -616,7 +678,7 @@ const FindRoutePage = () => {
                 <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
                   <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-amber-800">
-                    Route has hazards nearby. Proceed with caution and be prepared for detours.
+                    {routeInfo.summary || 'Route has hazards nearby. Proceed with caution and be prepared for detours.'}
                   </p>
                 </div>
               )}
@@ -868,11 +930,22 @@ const FindRoutePage = () => {
         {/* Generate Route Button */}
         <Button 
           className="w-full h-12 text-base"
-          disabled={!canGenerate}
+          disabled={!canGenerate || isGeneratingRoute}
           onClick={handleGenerateRoute}
         >
-          <Navigation className="w-5 h-5 mr-2" />
-          Generate Safe Route
+          {isGeneratingRoute ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              <Sparkles className="w-4 h-4 mr-1" />
+              Generating AI Route...
+            </>
+          ) : (
+            <>
+              <Navigation className="w-5 h-5 mr-2" />
+              <Sparkles className="w-4 h-4 mr-1" />
+              Generate Safe Route
+            </>
+          )}
         </Button>
 
         {!canGenerate && (
