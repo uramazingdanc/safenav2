@@ -355,7 +355,7 @@ const VerificationDialog = ({
               ref={selfieInputRef}
               type="file"
               accept="image/*"
-              capture="user"
+              
               className="hidden"
               onChange={onSelfieSelect}
             />
@@ -376,8 +376,8 @@ const VerificationDialog = ({
               ) : (
                 <div className="py-2">
                   <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium">Take a Selfie</p>
-                  <p className="text-xs text-muted-foreground">Clear photo of your face</p>
+                  <p className="text-sm font-medium">Upload Selfie</p>
+                  <p className="text-xs text-muted-foreground">Upload a clear photo of your face</p>
                 </div>
               )}
             </div>

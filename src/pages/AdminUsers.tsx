@@ -137,7 +137,7 @@ const AdminUsers = () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       queryClient.invalidateQueries({ queryKey: ['realtime-users'] });
       
-      toast.success(`User "${userToDelete.name}" has been removed`);
+      toast.success('User has been removed successfully');
       setUserToDelete(null);
     } catch (error: any) {
       console.error('Delete error:', error);
@@ -324,7 +324,7 @@ const AdminUsers = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete User</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
-              Are you sure you want to delete <strong className="text-white">"{userToDelete?.name}"</strong>? 
+              Are you sure you want to delete this user? 
               This will permanently remove their profile, verification data, and all hazard reports they submitted.
               This action cannot be undone.
             </AlertDialogDescription>

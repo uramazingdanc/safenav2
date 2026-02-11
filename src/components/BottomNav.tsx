@@ -8,11 +8,11 @@ const BottomNav = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/dashboard', icon: Home, label: 'Home' },
-    { path: '/map', icon: Map, label: 'Map' },
-    { path: '/hotlines', icon: Phone, label: 'Hotlines' },
-    { path: '/help', icon: HelpCircle, label: 'Help' },
-    { path: '/profile', icon: User, label: 'Profile' },
+    { path: '/dashboard', icon: Home, label: t.home },
+    { path: '/map', icon: Map, label: t.map },
+    { path: '/hotlines', icon: Phone, label: t.hotlines },
+    { path: '/help', icon: HelpCircle, label: t.help },
+    { path: '/profile', icon: User, label: t.profile },
   ];
 
   return (

@@ -12,25 +12,25 @@ const UserDashboard = () => {
 
   const quickActions = [
     {
-      title: 'Safety Map',
+      title: t.map,
       icon: MapPin,
       path: '/map',
       variant: 'primary' as const,
     },
     {
-      title: 'Find Route',
+      title: t.findRoute,
       icon: Navigation,
       path: '/find-route',
       variant: 'outline' as const,
     },
     {
-      title: 'Hotlines',
+      title: t.hotlines,
       icon: Phone,
       path: '/hotlines',
       variant: 'outline' as const,
     },
     {
-      title: 'Help',
+      title: t.help,
       icon: HelpCircle,
       path: '/help',
       variant: 'outline' as const,
