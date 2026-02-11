@@ -147,6 +147,23 @@ interface Translations {
   english: string;
   tagalog: string;
   cebuano: string;
+
+  // Help Page
+  faq: string;
+  helpTitle: string;
+  helpSubtitle: string;
+  faqReportQ: string;
+  faqReportA: string;
+  faqVerifyQ: string;
+  faqVerifyA: string;
+  faqRouteQ: string;
+  faqRouteA: string;
+  faqIconsQ: string;
+  faqIconsA: string;
+  faqEmergencyQ: string;
+  faqEmergencyA: string;
+  faqLocationQ: string;
+  faqLocationA: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -278,6 +295,22 @@ const translations: Record<Language, Translations> = {
     english: 'English',
     tagalog: 'Tagalog',
     cebuano: 'Cebuano',
+
+    faq: 'Frequently Asked Questions',
+    helpTitle: 'Help',
+    helpSubtitle: 'Get assistance and learn more',
+    faqReportQ: 'How do I report a hazard?',
+    faqReportA: 'Go to the Map page and tap the "Report Hazard" button. You can upload a photo, select the hazard type, and provide a description. Your report will be reviewed by administrators before being published.',
+    faqVerifyQ: 'How do I get verified?',
+    faqVerifyA: 'Complete your profile with your full name, phone number, and barangay information. An administrator will review and verify your account. Verified users have access to additional features and their reports are prioritized.',
+    faqRouteQ: 'How do I find a safe route?',
+    faqRouteA: 'Go to the Map page and use the "Find Route" feature. Select your starting point and destination (evacuation center), and the app will generate a safe route avoiding known hazards.',
+    faqIconsQ: 'What do the map icons mean?',
+    faqIconsA: 'Red markers indicate active hazards (floods, landslides, fires). Green markers show evacuation centers. Blue markers represent your current location. Yellow markers are pending hazard reports.',
+    faqEmergencyQ: 'How do I call emergency services?',
+    faqEmergencyA: 'Go to the Hotlines page accessible from the bottom navigation. Tap on any number to directly call that emergency service. For life-threatening emergencies, always call 911 first.',
+    faqLocationQ: "Why isn't my location working?",
+    faqLocationA: 'Make sure you have enabled location services for this app in your device settings. Go to Profile > Location Services and ensure it is turned on. If problems persist, try restarting the app.',
   },
   fil: {
     signIn: 'Mag-login',
@@ -407,6 +440,22 @@ const translations: Record<Language, Translations> = {
     english: 'Ingles',
     tagalog: 'Tagalog',
     cebuano: 'Cebuano',
+
+    faq: 'Mga Madalas Itanong',
+    helpTitle: 'Tulong',
+    helpSubtitle: 'Kumuha ng tulong at matuto pa',
+    faqReportQ: 'Paano mag-ulat ng panganib?',
+    faqReportA: 'Pumunta sa pahina ng Mapa at pindutin ang "Mag-ulat ng Panganib" na buton. Maari kang mag-upload ng larawan, pumili ng uri ng panganib, at magbigay ng paglalarawan. Ang iyong ulat ay susuriin ng mga administrador bago i-publish.',
+    faqVerifyQ: 'Paano ako magiging verified?',
+    faqVerifyA: 'Kumpletuhin ang iyong profile gamit ang iyong buong pangalan, numero ng telepono, at impormasyon ng barangay. Susuriin at ibe-verify ng isang administrador ang iyong account. Ang mga verified na user ay may access sa mga karagdagang feature at ang kanilang mga ulat ay inuuna.',
+    faqRouteQ: 'Paano makahanap ng ligtas na ruta?',
+    faqRouteA: 'Pumunta sa pahina ng Mapa at gamitin ang "Maghanap ng Ruta" na feature. Piliin ang iyong panimulang punto at destinasyon (evacuation center), at gagawa ang app ng ligtas na ruta na umiiwas sa mga kilalang panganib.',
+    faqIconsQ: 'Ano ang ibig sabihin ng mga icon sa mapa?',
+    faqIconsA: 'Ang mga pulang marker ay nagpapahiwatig ng mga aktibong panganib (baha, pagguho ng lupa, sunog). Ang mga berdeng marker ay nagpapakita ng mga evacuation center. Ang mga asul na marker ay kumakatawan sa iyong kasalukuyang lokasyon. Ang mga dilaw na marker ay mga nakabinbing ulat ng panganib.',
+    faqEmergencyQ: 'Paano tumawag sa mga serbisyong pang-emergency?',
+    faqEmergencyA: 'Pumunta sa pahina ng Mga Hotline na maa-access mula sa ibabang navigation. Pindutin ang anumang numero para direktang tawagan ang serbisyong pang-emergency na iyon. Para sa mga banta sa buhay na emergency, laging tumawag muna sa 911.',
+    faqLocationQ: 'Bakit hindi gumagana ang aking lokasyon?',
+    faqLocationA: 'Tiyaking pinagana mo ang mga serbisyo ng lokasyon para sa app na ito sa mga setting ng iyong device. Pumunta sa Profile > Mga Serbisyo ng Lokasyon at tiyaking naka-on ito. Kung magpapatuloy ang mga problema, subukang i-restart ang app.',
   },
   ceb: {
     signIn: 'Mo-sulod',
@@ -536,6 +585,22 @@ const translations: Record<Language, Translations> = {
     english: 'Iningles',
     tagalog: 'Tagalog',
     cebuano: 'Cebuano',
+
+    faq: 'Mga Kanunay Gipangutana',
+    helpTitle: 'Tabang',
+    helpSubtitle: 'Pagkuha ug tabang ug pagkat-on pa',
+    faqReportQ: 'Unsaon pag-report ug kakuyaw?',
+    faqReportA: 'Adto sa pahina sa Mapa ug i-tap ang "I-report ang Kakuyaw" nga buton. Mahimo kang mag-upload ug litrato, mopili sa klase sa kakuyaw, ug maghatag ug deskripsyon. Ang imong report susihon sa mga administrador una i-publish.',
+    faqVerifyQ: 'Unsaon nako pagpa-verify?',
+    faqVerifyA: 'Kompletuhon ang imong profile gamit ang imong tibuok nga ngalan, numero sa telepono, ug impormasyon sa barangay. Susihon ug i-verify sa usa ka administrador ang imong account. Ang mga verified nga user adunay access sa dugang nga mga feature ug ang ilang mga report giprayoridad.',
+    faqRouteQ: 'Unsaon pagpangita ug luwas nga ruta?',
+    faqRouteA: 'Adto sa pahina sa Mapa ug gamita ang "Pangita ug Ruta" nga feature. Pilia ang imong sinugdanan nga punto ug destinasyon (evacuation center), ug ang app maghimo ug luwas nga ruta nga molikay sa mga nahibaloan nga kakuyaw.',
+    faqIconsQ: 'Unsa ang kahulogan sa mga icon sa mapa?',
+    faqIconsA: 'Ang mga pula nga marker nagpakita sa mga aktibo nga kakuyaw (baha, pagdahili sa yuta, sunog). Ang mga berde nga marker nagpakita sa mga evacuation center. Ang mga asul nga marker nagrepresentar sa imong karon nga lokasyon. Ang mga dalag nga marker mao ang mga naghulat nga report sa kakuyaw.',
+    faqEmergencyQ: 'Unsaon pagtawag sa mga serbisyo sa emergency?',
+    faqEmergencyA: 'Adto sa pahina sa Mga Hotline nga ma-access gikan sa ubos nga navigation. I-tap ang bisan unsang numero aron direkta nga tawagan ang maong serbisyo sa emergency. Para sa mga emergency nga nagthreat sa kinabuhi, kanunay tawagi una ang 911.',
+    faqLocationQ: 'Ngano nga wala nagagana ang akong lokasyon?',
+    faqLocationA: 'Siguraduha nga gi-enable nimo ang mga serbisyo sa lokasyon para sa kini nga app sa mga setting sa imong device. Adto sa Profile > Mga Serbisyo sa Lokasyon ug siguraduha nga naka-on kini. Kung magpadayon ang mga problema, sulayi ug restart ang app.',
   },
 };
 
