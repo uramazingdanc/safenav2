@@ -38,7 +38,7 @@ const EmergencyHotlines = () => {
           <Phone className="w-6 h-6" />
           <div>
             <h1 className="text-xl font-bold">{t.emergencyHotlines}</h1>
-            <p className="text-sm text-destructive-foreground/80">Quick access to emergency services</p>
+            <p className="text-sm text-destructive-foreground/80">{t.quickAccessEmergency}</p>
           </div>
         </div>
       </div>
@@ -48,7 +48,7 @@ const EmergencyHotlines = () => {
         <Card className="border-border bg-card shadow-lg">
           <CardContent className="p-0">
             <div className="p-4 border-b border-border bg-primary/5">
-              <h2 className="text-lg font-semibold text-foreground">Emergency Services</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t.emergencyServices}</h2>
             </div>
             <div className="divide-y divide-border">
               {emergencyServices.map((service) => (
@@ -76,7 +76,7 @@ const EmergencyHotlines = () => {
         <Card className="border-border bg-card shadow-lg">
           <CardContent className="p-0">
             <div className="p-4 border-b border-border bg-primary/5">
-              <h2 className="text-lg font-semibold text-foreground">National Hotlines</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t.nationalHotlines}</h2>
             </div>
             <div className="divide-y divide-border">
               {nationalHotlines.map((hotline) => (
