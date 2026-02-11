@@ -164,6 +164,25 @@ interface Translations {
   faqEmergencyA: string;
   faqLocationQ: string;
   faqLocationA: string;
+
+  // Profile Page
+  profileTitle: string;
+  manageAccount: string;
+  editProfile: string;
+  saveChanges: string;
+  reportAHazard: string;
+  reportHazardDesc: string;
+  mustBeVerified: string;
+  getVerifiedFirst: string;
+  viewSafetyMap: string;
+  signOutLabel: string;
+  selectBarangay: string;
+  enterFullName: string;
+
+  // Hotlines Page
+  quickAccessEmergency: string;
+  emergencyServices: string;
+  nationalHotlines: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -311,6 +330,23 @@ const translations: Record<Language, Translations> = {
     faqEmergencyA: 'Go to the Hotlines page accessible from the bottom navigation. Tap on any number to directly call that emergency service. For life-threatening emergencies, always call 911 first.',
     faqLocationQ: "Why isn't my location working?",
     faqLocationA: 'Make sure you have enabled location services for this app in your device settings. Go to Profile > Location Services and ensure it is turned on. If problems persist, try restarting the app.',
+
+    profileTitle: 'Profile',
+    manageAccount: 'Manage your account',
+    editProfile: 'Edit Profile',
+    saveChanges: 'Save Changes',
+    reportAHazard: 'Report a Hazard',
+    reportHazardDesc: 'Help keep your community safe by reporting hazards.',
+    mustBeVerified: 'You must be verified to report hazards.',
+    getVerifiedFirst: 'Get Verified First',
+    viewSafetyMap: 'View Safety Map',
+    signOutLabel: 'Logout',
+    selectBarangay: 'Select your barangay',
+    enterFullName: 'Enter your full name',
+
+    quickAccessEmergency: 'Quick access to emergency services',
+    emergencyServices: 'Emergency Services',
+    nationalHotlines: 'National Hotlines',
   },
   fil: {
     signIn: 'Mag-login',
@@ -456,6 +492,23 @@ const translations: Record<Language, Translations> = {
     faqEmergencyA: 'Pumunta sa pahina ng Mga Hotline na maa-access mula sa ibabang navigation. Pindutin ang anumang numero para direktang tawagan ang serbisyong pang-emergency na iyon. Para sa mga banta sa buhay na emergency, laging tumawag muna sa 911.',
     faqLocationQ: 'Bakit hindi gumagana ang aking lokasyon?',
     faqLocationA: 'Tiyaking pinagana mo ang mga serbisyo ng lokasyon para sa app na ito sa mga setting ng iyong device. Pumunta sa Profile > Mga Serbisyo ng Lokasyon at tiyaking naka-on ito. Kung magpapatuloy ang mga problema, subukang i-restart ang app.',
+
+    profileTitle: 'Profile',
+    manageAccount: 'Pamahalaan ang iyong account',
+    editProfile: 'I-edit ang Profile',
+    saveChanges: 'I-save ang mga Pagbabago',
+    reportAHazard: 'Mag-ulat ng Panganib',
+    reportHazardDesc: 'Tulungang panatilihing ligtas ang iyong komunidad sa pag-uulat ng mga panganib.',
+    mustBeVerified: 'Kailangan mong ma-verify para mag-ulat ng panganib.',
+    getVerifiedFirst: 'Magpa-verify Muna',
+    viewSafetyMap: 'Tingnan ang Mapa ng Kaligtasan',
+    signOutLabel: 'Mag-logout',
+    selectBarangay: 'Piliin ang iyong barangay',
+    enterFullName: 'Ilagay ang iyong buong pangalan',
+
+    quickAccessEmergency: 'Mabilis na access sa mga serbisyo ng emergency',
+    emergencyServices: 'Mga Serbisyo ng Emergency',
+    nationalHotlines: 'Mga Pambansang Hotline',
   },
   ceb: {
     signIn: 'Mo-sulod',
@@ -601,6 +654,23 @@ const translations: Record<Language, Translations> = {
     faqEmergencyA: 'Adto sa pahina sa Mga Hotline nga ma-access gikan sa ubos nga navigation. I-tap ang bisan unsang numero aron direkta nga tawagan ang maong serbisyo sa emergency. Para sa mga emergency nga nagthreat sa kinabuhi, kanunay tawagi una ang 911.',
     faqLocationQ: 'Ngano nga wala nagagana ang akong lokasyon?',
     faqLocationA: 'Siguraduha nga gi-enable nimo ang mga serbisyo sa lokasyon para sa kini nga app sa mga setting sa imong device. Adto sa Profile > Mga Serbisyo sa Lokasyon ug siguraduha nga naka-on kini. Kung magpadayon ang mga problema, sulayi ug restart ang app.',
+
+    profileTitle: 'Profile',
+    manageAccount: 'Pagdumala sa imong account',
+    editProfile: 'Usbon ang Profile',
+    saveChanges: 'I-save ang mga Kausaban',
+    reportAHazard: 'I-report ang Kakuyaw',
+    reportHazardDesc: 'Tabangi nga luwas ang imong komunidad pinaagi sa pag-report sa mga kakuyaw.',
+    mustBeVerified: 'Kinahanglan ka ma-verify aron maka-report sa kakuyaw.',
+    getVerifiedFirst: 'Pagpa-verify Una',
+    viewSafetyMap: 'Tan-awa ang Mapa sa Kaluwasan',
+    signOutLabel: 'Paggawas',
+    selectBarangay: 'Pilia ang imong barangay',
+    enterFullName: 'Isulat ang imong tibuok nga ngalan',
+
+    quickAccessEmergency: 'Dali nga access sa mga serbisyo sa emergency',
+    emergencyServices: 'Mga Serbisyo sa Emergency',
+    nationalHotlines: 'Mga Nasudnon nga Hotline',
   },
 };
 

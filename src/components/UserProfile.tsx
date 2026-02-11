@@ -91,8 +91,8 @@ const UserProfile = () => {
     <div className="min-h-screen bg-secondary/30 pb-20">
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 pb-6">
-        <h1 className="text-xl font-bold">Profile</h1>
-        <p className="text-sm text-primary-foreground/80">Manage your account</p>
+        <h1 className="text-xl font-bold">{t.profileTitle}</h1>
+        <p className="text-sm text-primary-foreground/80">{t.manageAccount}</p>
       </div>
 
       <div className="p-4 space-y-4">
@@ -112,25 +112,25 @@ const UserProfile = () => {
               <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" onClick={handleEditOpen}>
-                    Edit
+                    {t.edit}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
-                    <DialogTitle>Edit Profile</DialogTitle>
+                    <DialogTitle>{t.editProfile}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
+                      <Label htmlFor="fullName">{t.fullName}</Label>
                       <Input
                         id="fullName"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Enter your full name"
+                        placeholder={t.enterFullName}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
+                      <Label htmlFor="phone">{t.phoneNumber}</Label>
                       <Input
                         id="phone"
                         value={phoneNumber}
@@ -139,10 +139,10 @@ const UserProfile = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="barangay">Barangay</Label>
+                      <Label htmlFor="barangay">{t.barangay}</Label>
                       <Select value={barangay} onValueChange={setBarangay}>
                         <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select your barangay" />
+                          <SelectValue placeholder={t.selectBarangay} />
                         </SelectTrigger>
                         <SelectContent className="bg-background z-50">
                           {NAVAL_BARANGAYS.map((brgy) => (
@@ -156,13 +156,13 @@ const UserProfile = () => {
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-                      Cancel
+                      {t.cancel}
                     </Button>
                     <Button onClick={handleSaveProfile} disabled={updateProfile.isPending}>
                       {updateProfile.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : null}
-                      Save Changes
+                      {t.saveChanges}
                     </Button>
                   </div>
                 </DialogContent>
@@ -201,11 +201,11 @@ const UserProfile = () => {
                 <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold">Report a Hazard</h3>
+                <h3 className="font-semibold">{t.reportAHazard}</h3>
                 <p className="text-xs text-muted-foreground">
                   {isVerified 
-                    ? 'Help keep your community safe by reporting hazards.'
-                    : 'You must be verified to report hazards.'}
+                    ? t.reportHazardDesc
+                    : t.mustBeVerified}
                 </p>
               </div>
             </div>
@@ -218,12 +218,12 @@ const UserProfile = () => {
               {isVerified ? (
                 <>
                   <AlertTriangle className="w-4 h-4 mr-2" />
-                  Report Hazard
+                  {t.reportHazard}
                 </>
               ) : (
                 <>
                   <Shield className="w-4 h-4 mr-2" />
-                  Get Verified First
+                  {t.getVerifiedFirst}
                 </>
               )}
             </Button>
@@ -238,14 +238,14 @@ const UserProfile = () => {
               onClick={() => navigate('/map')}
             >
               <Map className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">View Safety Map</span>
+              <span className="text-sm font-medium">{t.viewSafetyMap}</span>
             </div>
             <div
               className="flex items-center justify-center gap-2 p-4 cursor-pointer hover:bg-secondary/50"
               onClick={() => navigate('/hotlines')}
             >
               <Phone className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Emergency Hotlines</span>
+              <span className="text-sm font-medium">{t.emergencyHotlines}</span>
             </div>
           </CardContent>
         </Card>
@@ -257,7 +257,7 @@ const UserProfile = () => {
           onClick={handleSignOut}
         >
           <LogOut className="w-4 h-4 mr-2" />
-          Logout
+          {t.signOutLabel}
         </Button>
       </div>
     </div>
