@@ -1,4 +1,4 @@
-import { HelpCircle, ChevronDown } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Accordion,
@@ -12,30 +12,12 @@ const HelpPage = () => {
   const { t } = useLanguage();
 
   const faqs = [
-    {
-      question: 'How do I report a hazard?',
-      answer: 'Go to the Map page and tap the "Report Hazard" button. You can take a photo, select the hazard type, and provide a description. Your report will be reviewed by administrators before being published.',
-    },
-    {
-      question: 'How do I get verified?',
-      answer: 'Complete your profile with your full name, phone number, and barangay information. An administrator will review and verify your account. Verified users have access to additional features and their reports are prioritized.',
-    },
-    {
-      question: 'How do I find a safe route?',
-      answer: 'Go to the Map page and use the "Find Route" feature. Select your starting point and destination (evacuation center), and the app will generate a safe route avoiding known hazards.',
-    },
-    {
-      question: 'What do the map icons mean?',
-      answer: 'Red markers indicate active hazards (floods, landslides, fires). Green markers show evacuation centers. Blue markers represent your current location. Yellow markers are pending hazard reports.',
-    },
-    {
-      question: 'How do I call emergency services?',
-      answer: 'Go to the Hotlines page accessible from the bottom navigation. Tap on any number to directly call that emergency service. For life-threatening emergencies, always call 911 first.',
-    },
-    {
-      question: "Why isn't my location working?",
-      answer: 'Make sure you have enabled location services for this app in your device settings. Go to Profile > Location Services and ensure it is turned on. If problems persist, try restarting the app.',
-    },
+    { question: t.faqReportQ, answer: t.faqReportA },
+    { question: t.faqVerifyQ, answer: t.faqVerifyA },
+    { question: t.faqRouteQ, answer: t.faqRouteA },
+    { question: t.faqIconsQ, answer: t.faqIconsA },
+    { question: t.faqEmergencyQ, answer: t.faqEmergencyA },
+    { question: t.faqLocationQ, answer: t.faqLocationA },
   ];
 
   return (
@@ -45,8 +27,8 @@ const HelpPage = () => {
         <div className="flex items-center gap-3">
           <HelpCircle className="w-6 h-6" />
           <div>
-            <h1 className="text-xl font-bold">Help</h1>
-            <p className="text-sm text-primary-foreground/80">Get assistance and learn more</p>
+            <h1 className="text-xl font-bold">{t.helpTitle}</h1>
+            <p className="text-sm text-primary-foreground/80">{t.helpSubtitle}</p>
           </div>
         </div>
       </div>
@@ -72,7 +54,7 @@ const HelpPage = () => {
         <div>
           <h2 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
             <HelpCircle className="w-5 h-5" />
-            Frequently Asked Questions
+            {t.faq}
           </h2>
           <Card>
             <CardContent className="p-0">
