@@ -23,6 +23,7 @@ interface Translations {
   map: string;
   report: string;
   hotlines: string;
+  help: string;
   profile: string;
   
   // Map & Location
@@ -168,6 +169,7 @@ const translations: Record<Language, Translations> = {
     map: 'Map',
     report: 'Report',
     hotlines: 'Hotlines',
+    help: 'Help',
     profile: 'Profile',
     
     findRoute: 'Find Safe Route',
@@ -296,6 +298,7 @@ const translations: Record<Language, Translations> = {
     map: 'Mapa',
     report: 'Mag-ulat',
     hotlines: 'Mga Hotline',
+    help: 'Tulong',
     profile: 'Profile',
     
     findRoute: 'Maghanap ng Ligtas na Ruta',
@@ -424,6 +427,7 @@ const translations: Record<Language, Translations> = {
     map: 'Mapa',
     report: 'I-report',
     hotlines: 'Mga Hotline',
+    help: 'Tabang',
     profile: 'Profile',
     
     findRoute: 'Pangita ug Luwas nga Ruta',

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { AlertTriangle, Camera, Send, Loader2, X, ArrowLeft, MapPin } from 'lucide-react';
+import { AlertTriangle, Upload, Send, Loader2, X, ArrowLeft, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -287,7 +287,6 @@ const ReportHazard = () => {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={handlePhotoSelect}
                 />
@@ -314,9 +313,9 @@ const ReportHazard = () => {
                     className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm font-medium">Take Photo</p>
-                    <p className="text-xs text-muted-foreground">Tap to capture or upload evidence</p>
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium">Upload Photo</p>
+                    <p className="text-xs text-muted-foreground">Tap to upload photo evidence</p>
                   </div>
                 )}
               </div>

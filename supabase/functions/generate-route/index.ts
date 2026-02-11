@@ -59,23 +59,38 @@ serve(async (req) => {
 
 Your task is to generate realistic walking directions between two points, considering active hazards.
 
-Known streets in Naval, Biliran include:
-- Biliran Circumferential Road (main highway)
-- Caneja Street
+Naval is a municipality in Biliran province. Key landmarks and streets include:
+- Biliran Circumferential Road (main highway circling the island)
+- Naval Town Proper / Poblacion area
+- Naval Municipal Hall
+- Naval Public Market
+- Caneja Street (town center)
 - Rizal Avenue
 - Castin Street
-- Padre Burgos Street
+- Padre Burgos Street  
 - Inocencio Street
 - P. Zamora Street
 - Vicentillo Street
 - Del Pilar Street
-- Naval-Caibiran Road
+- Naval-Caibiran Road (connects Naval to Caibiran)
 - Legazpi Street
 - Bonifacio Street
+- Naval Port / Pier area
+- Naval Town Plaza
 
-Walking speed is assumed to be 5 km/h. Generate 4-8 direction steps that are realistic for the distance. Each step should have a street name and approximate distance. Flag steps that pass near reported hazards.
+Geographic context:
+- Naval is a coastal town on the western side of Biliran Island
+- The terrain is generally flat near the coast, hilly inland
+- Barangays spread from coast to interior hills
+- Main roads follow the coastline, with secondary roads going inland
 
-IMPORTANT: The total distance of all steps should approximately equal the provided total distance.`;
+Walking speed is assumed to be 5 km/h. Generate 4-8 direction steps that are realistic for the distance. Each step should reference actual street names or landmarks in Naval. Flag steps that pass near reported hazards.
+
+IMPORTANT: 
+- The total distance of all steps should approximately equal the provided total distance.
+- Use realistic street names from Naval, Biliran - do NOT invent street names.
+- Directions should make geographic sense for a coastal Philippine municipality.
+- Include turn directions (left, right, straight) where appropriate.`;
 
     const userPrompt = `Generate walking directions from (${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}) to (${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}).
 
