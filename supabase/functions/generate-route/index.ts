@@ -90,7 +90,8 @@ IMPORTANT:
 - The total distance of all steps should approximately equal the provided total distance.
 - Use realistic street names from Naval, Biliran - do NOT invent street names.
 - Directions should make geographic sense for a coastal Philippine municipality.
-- Include turn directions (left, right, straight) where appropriate.`;
+- Include turn directions (left, right, straight) where appropriate.
+- CRITICAL TRAFFIC RULE: The Philippines follows right-hand traffic. Always route pedestrians on the RIGHT SIDE of the road. When giving directions, instruct walkers to keep to the right side/right lane of the road for safety. When crossing roads, remind them to look left first (as vehicles approach from the left in right-hand traffic).`;
 
     const userPrompt = `Generate walking directions from (${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}) to (${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}).
 
