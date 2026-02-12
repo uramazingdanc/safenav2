@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useCreateHazardReport } from '@/hooks/useHazardReports';
 import { NAVAL_BARANGAYS } from '@/constants/barangays';
 import MapPickerModal from '@/components/MapPickerModal';
+import { useProfile } from '@/hooks/useProfiles';
+import { supabase } from '@/integrations/supabase/client';
 
 const HAZARD_TYPES = [
   { value: 'flooding', label: 'Flooding', icon: '🌊' },
@@ -39,6 +41,9 @@ const ReportHazard = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const createReport = useCreateHazardReport();
+  const { data: profile } = useProfile();
+  
+  const isVerified = profile?.verification_status === 'verified';
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,6 +106,15 @@ const ReportHazard = () => {
       return;
     }
 
+    if (!isVerified) {
+      toast({
+        title: t.error,
+        description: 'Only verified users can submit hazard reports with photos. Please verify your identity first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!photoFile) {
       toast({
         title: t.error,
@@ -120,12 +134,31 @@ const ReportHazard = () => {
     }
 
     try {
+      // Upload photo to storage
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}_hazard.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('hazard_photos')
+        .upload(fileName, photoFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('hazard_photos')
+        .getPublicUrl(fileName);
+
       await createReport.mutateAsync({
         hazard_type: hazardType,
         description,
         location: barangay,
         latitude: coordinates.lat,
         longitude: coordinates.lng,
+        photo_url: urlData.publicUrl,
       });
 
       toast({
@@ -135,6 +168,7 @@ const ReportHazard = () => {
       
       navigate(-1);
     } catch (error) {
+      console.error('Submit error:', error);
       toast({
         title: t.error,
         description: 'Failed to submit report. Please try again.',
@@ -283,40 +317,50 @@ const ReportHazard = () => {
               {/* Photo Evidence */}
               <div className="space-y-2">
                 <Label>Photo Evidence *</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoSelect}
-                />
-                
-                {photoPreview ? (
-                  <div className="relative">
-                    <img 
-                      src={photoPreview} 
-                      alt="Evidence" 
-                      className="w-full h-48 object-cover rounded-lg border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8"
-                      onClick={handleRemovePhoto}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                {!isVerified ? (
+                  <div className="border-2 border-dashed border-destructive/30 rounded-lg p-6 text-center bg-destructive/5">
+                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-destructive" />
+                    <p className="text-sm font-medium text-destructive">Verification Required</p>
+                    <p className="text-xs text-muted-foreground">Only verified users can upload photos. Please verify your identity first.</p>
                   </div>
                 ) : (
-                  <div 
-                    className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm font-medium">Upload Photo</p>
-                    <p className="text-xs text-muted-foreground">Tap to upload photo evidence</p>
-                  </div>
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoSelect}
+                    />
+                    
+                    {photoPreview ? (
+                      <div className="relative">
+                        <img 
+                          src={photoPreview} 
+                          alt="Evidence" 
+                          className="w-full h-48 object-cover rounded-lg border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 h-8 w-8"
+                          onClick={handleRemovePhoto}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium">Upload Photo</p>
+                        <p className="text-xs text-muted-foreground">Tap to upload photo evidence</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
