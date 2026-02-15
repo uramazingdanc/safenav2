@@ -21,8 +21,50 @@ interface RouteRequest {
   walkingTime: number;
 }
 
+interface OSRMStep {
+  distance: number;
+  duration: number;
+  name: string;
+  maneuver: {
+    type: string;
+    modifier?: string;
+    location: [number, number];
+  };
+}
+
+function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function formatManeuver(step: OSRMStep): string {
+  const streetName = step.name || 'the road';
+  const type = step.maneuver.type;
+  const modifier = step.maneuver.modifier;
+
+  if (type === 'depart') return `Head ${modifier || 'forward'} on ${streetName}`;
+  if (type === 'arrive') return `Arrive at your destination on ${streetName}`;
+  if (type === 'turn') return `Turn ${modifier || ''} onto ${streetName}`.trim();
+  if (type === 'new name') return `Continue onto ${streetName}`;
+  if (type === 'merge') return `Merge onto ${streetName}`;
+  if (type === 'fork') return `Take the ${modifier || ''} fork onto ${streetName}`.trim();
+  if (type === 'roundabout') return `At the roundabout, take the exit onto ${streetName}`;
+  if (type === 'end of road') return `At the end of the road, turn ${modifier || ''} onto ${streetName}`.trim();
+  if (type === 'continue') return `Continue ${modifier ? modifier + ' ' : ''}on ${streetName}`;
+  
+  return `Continue on ${streetName}`;
+}
+
+function distanceBetween(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -30,7 +72,7 @@ serve(async (req) => {
   try {
     const { startCoords, endCoords, hazards, totalDistance, walkingTime } = await req.json() as RouteRequest;
 
-    console.log('Generate route request:', { startCoords, endCoords, hazardsCount: hazards?.length, totalDistance, walkingTime });
+    console.log('Generate route request:', { startCoords, endCoords, hazardsCount: hazards?.length });
 
     if (!startCoords || !endCoords) {
       return new Response(
@@ -39,179 +81,76 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
-      return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Step 1: Get real route from OSRM (free, no API key needed)
+    const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${startCoords.lng},${startCoords.lat};${endCoords.lng},${endCoords.lat}?steps=true&overview=full&geometries=geojson`;
+    
+    console.log('Fetching OSRM route:', osrmUrl);
+    const osrmResponse = await fetch(osrmUrl);
+
+    if (!osrmResponse.ok) {
+      console.error('OSRM error:', osrmResponse.status);
+      return fallbackAIRoute(req, startCoords, endCoords, hazards, totalDistance, walkingTime);
     }
 
-    // Format hazards for the prompt
-    const hazardsList = hazards && hazards.length > 0
-      ? hazards.map((h, i) => 
-          `${i + 1}. ${h.type} (${h.severity}) at coordinates (${h.lat.toFixed(4)}, ${h.lng.toFixed(4)})${h.description ? `: ${h.description}` : ''}`
-        ).join('\n')
-      : 'No active hazards reported in this area.';
+    const osrmData = await osrmResponse.json();
+    
+    if (osrmData.code !== 'Ok' || !osrmData.routes?.[0]) {
+      console.error('OSRM no route found:', osrmData.code);
+      return fallbackAIRoute(req, startCoords, endCoords, hazards, totalDistance, walkingTime);
+    }
 
-    const systemPrompt = `You are a navigation assistant for SafeNav, an emergency navigation app for Naval, Biliran, Philippines.
+    const route = osrmData.routes[0];
+    const steps: OSRMStep[] = route.legs[0].steps;
 
-Your task is to generate realistic walking directions between two points, considering active hazards.
+    // Step 2: Convert OSRM steps to our direction format, checking hazards
+    const directions = steps
+      .filter((step) => step.maneuver.type !== 'arrive' || step.distance > 0)
+      .map((step) => {
+        const instruction = formatManeuver(step);
+        const distance = formatDistance(step.distance);
+        const [lng, lat] = step.maneuver.location;
 
-Naval is a municipality in Biliran province. Key landmarks and streets include:
-- Biliran Circumferential Road (main highway circling the island)
-- Naval Town Proper / Poblacion area
-- Naval Municipal Hall
-- Naval Public Market
-- Caneja Street (town center)
-- Rizal Avenue
-- Castin Street
-- Padre Burgos Street  
-- Inocencio Street
-- P. Zamora Street
-- Vicentillo Street
-- Del Pilar Street
-- Naval-Caibiran Road (connects Naval to Caibiran)
-- Legazpi Street
-- Bonifacio Street
-- Naval Port / Pier area
-- Naval Town Plaza
+        // Check if any hazard is within 200m of this step
+        let hasHazard = false;
+        let hazardType = '';
+        let hazardWarning = '';
 
-Geographic context:
-- Naval is a coastal town on the western side of Biliran Island
-- The terrain is generally flat near the coast, hilly inland
-- Barangays spread from coast to interior hills
-- Main roads follow the coastline, with secondary roads going inland
-
-Walking speed is assumed to be 5 km/h. Generate 4-8 direction steps that are realistic for the distance. Each step should reference actual street names or landmarks in Naval. Flag steps that pass near reported hazards.
-
-IMPORTANT: 
-- The total distance of all steps should approximately equal the provided total distance.
-- Use realistic street names from Naval, Biliran - do NOT invent street names.
-- Directions should make geographic sense for a coastal Philippine municipality.
-- Include turn directions (left, right, straight) where appropriate.
-- CRITICAL TRAFFIC RULE: The Philippines follows right-hand traffic. Always route pedestrians on the RIGHT SIDE of the road. When giving directions, instruct walkers to keep to the right side/right lane of the road for safety. When crossing roads, remind them to look left first (as vehicles approach from the left in right-hand traffic).`;
-
-    const userPrompt = `Generate walking directions from (${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}) to (${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}).
-
-Total straight-line distance: ${totalDistance.toFixed(2)} km
-Estimated walking time: ${walkingTime} minutes
-
-Active hazards in the area:
-${hazardsList}
-
-Generate turn-by-turn walking directions with street names and distances. If any step passes near a hazard, mark it with a warning.`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "generate_route_directions",
-              description: "Generate walking route directions with street names, distances, and hazard warnings",
-              parameters: {
-                type: "object",
-                properties: {
-                  directions: {
-                    type: "array",
-                    description: "Array of direction steps",
-                    items: {
-                      type: "object",
-                      properties: {
-                        instruction: {
-                          type: "string",
-                          description: "The navigation instruction (e.g., 'Head North on Caneja Street', 'Turn right onto Biliran Circumferential Road')"
-                        },
-                        distance: {
-                          type: "string",
-                          description: "Distance for this step (e.g., '200 m', '1.2 km')"
-                        },
-                        hasHazard: {
-                          type: "boolean",
-                          description: "Whether this step passes near a hazard"
-                        },
-                        hazardType: {
-                          type: "string",
-                          description: "Type of hazard if hasHazard is true (e.g., 'Flooding', 'Landslide')"
-                        },
-                        hazardWarning: {
-                          type: "string",
-                          description: "Warning message if hasHazard is true"
-                        }
-                      },
-                      required: ["instruction", "distance", "hasHazard"],
-                      additionalProperties: false
-                    }
-                  },
-                  summary: {
-                    type: "string",
-                    description: "Brief summary of the route and any hazard warnings"
-                  },
-                  hazardStatus: {
-                    type: "string",
-                    enum: ["HAZARDS_PRESENT", "ROUTE_CLEAR"],
-                    description: "Overall hazard status for the route"
-                  }
-                },
-                required: ["directions", "hazardStatus"],
-                additionalProperties: false
-              }
+        if (hazards && hazards.length > 0) {
+          for (const h of hazards) {
+            const dist = distanceBetween(lat, lng, h.lat, h.lng);
+            if (dist < 200) {
+              hasHazard = true;
+              hazardType = h.type;
+              hazardWarning = `⚠️ ${h.type} (${h.severity}) reported ${Math.round(dist)}m from this point${h.description ? ': ' + h.description : ''}. Stay on the right side of the road and proceed with caution.`;
+              break;
             }
           }
-        ],
-        tool_choice: { type: "function", function: { name: "generate_route_directions" } }
-      }),
-    });
+        }
 
-    if (!response.ok) {
-      console.error('AI Gateway error:', response.status, await response.text());
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded', fallback: true }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Service temporarily unavailable', fallback: true }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: 'AI service error', fallback: true }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+        return {
+          instruction: instruction + '. Keep to the right side of the road.',
+          distance,
+          hasHazard,
+          ...(hasHazard && { hazardType, hazardWarning }),
+        };
+      })
+      .filter((d) => d.distance !== '0 m'); // Remove zero-distance steps
 
-    const aiResponse = await response.json();
-    console.log('AI response:', JSON.stringify(aiResponse, null, 2));
+    const hasAnyHazard = directions.some((d) => d.hasHazard);
+    const routeDistanceKm = (route.distance / 1000).toFixed(2);
+    const routeTimeMin = Math.round(route.duration / 60);
 
-    // Extract the tool call result
-    const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function?.name !== 'generate_route_directions') {
-      console.error('Unexpected AI response format:', aiResponse);
-      return new Response(
-        JSON.stringify({ error: 'Invalid AI response', fallback: true }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const summary = hasAnyHazard
+      ? `Route is ${routeDistanceKm} km (~${routeTimeMin} min walk). ⚠️ Hazards detected along the route. Follow right-hand traffic rules and proceed with caution near flagged areas.`
+      : `Route is ${routeDistanceKm} km (~${routeTimeMin} min walk). Route is clear of reported hazards. Stay on the right side of the road.`;
 
-    const routeData = JSON.parse(toolCall.function.arguments);
-    console.log('Parsed route data:', routeData);
+    const routeData = {
+      directions,
+      summary,
+      hazardStatus: hasAnyHazard ? 'HAZARDS_PRESENT' : 'ROUTE_CLEAR',
+    };
+
+    console.log('Route generated with', directions.length, 'steps from real OSRM data');
 
     return new Response(
       JSON.stringify(routeData),
@@ -226,3 +165,100 @@ Generate turn-by-turn walking directions with street names and distances. If any
     );
   }
 });
+
+// Fallback to AI-generated route if OSRM fails
+async function fallbackAIRoute(
+  _req: Request,
+  startCoords: { lat: number; lng: number },
+  endCoords: { lat: number; lng: number },
+  hazards: Hazard[],
+  totalDistance: number,
+  walkingTime: number
+) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: 'AI service not configured', fallback: true }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const hazardsList = hazards && hazards.length > 0
+    ? hazards.map((h, i) =>
+        `${i + 1}. ${h.type} (${h.severity}) at (${h.lat.toFixed(4)}, ${h.lng.toFixed(4)})${h.description ? ': ' + h.description : ''}`
+      ).join('\n')
+    : 'No active hazards reported.';
+
+  const systemPrompt = `You are a navigation assistant for Naval, Biliran, Philippines. Generate realistic walking directions using REAL street names. The Philippines follows right-hand traffic — always instruct pedestrians to stay on the right side. Key streets: Biliran Circumferential Road, Caneja Street, Rizal Avenue, Castin Street, P. Zamora Street, Vicentillo Street, Naval-Caibiran Road. Generate 4-8 steps.`;
+
+  const userPrompt = `Directions from (${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}) to (${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}). Distance: ${totalDistance.toFixed(2)} km, ~${walkingTime} min. Hazards:\n${hazardsList}`;
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "generate_route_directions",
+          description: "Generate walking directions",
+          parameters: {
+            type: "object",
+            properties: {
+              directions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    instruction: { type: "string" },
+                    distance: { type: "string" },
+                    hasHazard: { type: "boolean" },
+                    hazardType: { type: "string" },
+                    hazardWarning: { type: "string" }
+                  },
+                  required: ["instruction", "distance", "hasHazard"],
+                  additionalProperties: false
+                }
+              },
+              summary: { type: "string" },
+              hazardStatus: { type: "string", enum: ["HAZARDS_PRESENT", "ROUTE_CLEAR"] }
+            },
+            required: ["directions", "hazardStatus"],
+            additionalProperties: false
+          }
+        }
+      }],
+      tool_choice: { type: "function", function: { name: "generate_route_directions" } }
+    }),
+  });
+
+  if (!response.ok) {
+    return new Response(
+      JSON.stringify({ error: 'AI service error', fallback: true }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const aiResponse = await response.json();
+  const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid AI response', fallback: true }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const routeData = JSON.parse(toolCall.function.arguments);
+  return new Response(
+    JSON.stringify(routeData),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
