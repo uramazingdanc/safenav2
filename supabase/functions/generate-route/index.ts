@@ -144,10 +144,14 @@ serve(async (req) => {
       ? `Route is ${routeDistanceKm} km (~${routeTimeMin} min walk). ⚠️ Hazards detected along the route. Follow right-hand traffic rules and proceed with caution near flagged areas.`
       : `Route is ${routeDistanceKm} km (~${routeTimeMin} min walk). Route is clear of reported hazards. Stay on the right side of the road.`;
 
+    // Extract the actual road geometry from OSRM response
+    const routeGeometry = route.geometry?.coordinates?.map((coord: [number, number]) => [coord[0], coord[1]]) || [];
+
     const routeData = {
       directions,
       summary,
       hazardStatus: hasAnyHazard ? 'HAZARDS_PRESENT' : 'ROUTE_CLEAR',
+      routeGeometry,
     };
 
     console.log('Route generated with', directions.length, 'steps from real OSRM data');
