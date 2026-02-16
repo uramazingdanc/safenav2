@@ -14,6 +14,7 @@ export interface RouteResponse {
   directions: RouteDirection[];
   summary?: string;
   hazardStatus: 'HAZARDS_PRESENT' | 'ROUTE_CLEAR';
+  routeGeometry?: [number, number][]; // [lng, lat] pairs from OSRM
 }
 
 interface Hazard {

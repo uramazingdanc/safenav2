@@ -111,6 +111,7 @@ const FindRoutePage = () => {
   const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [routeGenerated, setRouteGenerated] = useState(false);
+  const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [routeInfo, setRouteInfo] = useState<{ 
     distance: string; 
     time: string; 
@@ -318,12 +319,16 @@ const FindRoutePage = () => {
     endFeature.setStyle(endPinStyle);
     markersSource.addFeature(endFeature);
 
-    // Generate route line
-    const routeCoords = [
-      [startCoords.lng, startCoords.lat],
-      [(startCoords.lng + endCoords.lng) / 2 + 0.002, (startCoords.lat + endCoords.lat) / 2 + 0.001],
-      [endCoords.lng, endCoords.lat],
-    ].map(coord => fromLonLat(coord));
+    // Draw actual road geometry from OSRM, or fallback to straight line
+    let routeCoords: number[][];
+    if (routeGeometry && routeGeometry.length > 0) {
+      routeCoords = routeGeometry.map(coord => fromLonLat(coord));
+    } else {
+      routeCoords = [
+        fromLonLat([startCoords.lng, startCoords.lat]),
+        fromLonLat([endCoords.lng, endCoords.lat]),
+      ];
+    }
 
     const routeFeature = new Feature({
       geometry: new LineString(routeCoords),
@@ -360,7 +365,7 @@ const FindRoutePage = () => {
       duration: 500,
     });
 
-  }, [mapReady, startCoords, endCoords, hazards]);
+  }, [mapReady, startCoords, endCoords, hazards, routeGeometry]);
 
   const openPicker = (mode: 'start' | 'end') => {
     setPickerMode(mode);
@@ -488,9 +493,12 @@ const FindRoutePage = () => {
         hazardWarning: dir.hazardWarning,
       }));
 
+      // Store the actual road geometry for map drawing
+      setRouteGeometry(aiResponse.routeGeometry || null);
+
       setRouteInfo({
-        distance: totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`,
-        time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
+        distance: aiResponse.summary?.match(/([\d.]+)\s*km/)?.[0] || (totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`),
+        time: aiResponse.summary?.match(/~?(\d+)\s*min/)?.[0] || (timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`),
         hasHazard: aiResponse.hazardStatus === 'HAZARDS_PRESENT',
         hazardCount: hazardsOnRoute.length,
         directions: formattedDirections,
@@ -549,6 +557,7 @@ const FindRoutePage = () => {
   const handleReset = () => {
     setRouteGenerated(false);
     setRouteInfo(null);
+    setRouteGeometry(null);
     setStartCoords(null);
     setEndCoords(null);
     setMapReady(false);
