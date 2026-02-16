@@ -10,6 +10,7 @@ import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
 import WeatherCard from '@/components/WeatherCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
+import { useGenerateRoute } from '@/hooks/useGenerateRoute';
 
 // OpenLayers imports
 import OLMap from 'ol/Map';
@@ -134,7 +135,10 @@ const SafetyMap = () => {
   const [endCoords, setEndCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeGenerated, setRouteGenerated] = useState(false);
   const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string } | null>(null);
+  const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [isSelectingRoute, setIsSelectingRoute] = useState(false);
+  const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
+  const generateRouteMutation = useGenerateRoute();
   const [selectionMode, setSelectionMode] = useState<'start' | 'end' | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [activeTab, setActiveTab] = useState('map');
@@ -442,11 +446,16 @@ const SafetyMap = () => {
 
     // Draw route line if both points are set and route is generated
     if (startCoords && endCoords && routeGenerated) {
-      const routeCoords = [
-        [startCoords.lng, startCoords.lat],
-        [(startCoords.lng + endCoords.lng) / 2 + 0.002, (startCoords.lat + endCoords.lat) / 2 + 0.001],
-        [endCoords.lng, endCoords.lat],
-      ].map(coord => fromLonLat(coord));
+      // Use actual road geometry from OSRM, or fallback to straight line
+      let routeCoords: number[][];
+      if (routeGeometry && routeGeometry.length > 0) {
+        routeCoords = routeGeometry.map(coord => fromLonLat(coord));
+      } else {
+        routeCoords = [
+          fromLonLat([startCoords.lng, startCoords.lat]),
+          fromLonLat([endCoords.lng, endCoords.lat]),
+        ];
+      }
 
       const routeFeature = new Feature({
         geometry: new LineString(routeCoords),
@@ -462,7 +471,7 @@ const SafetyMap = () => {
         duration: 500,
       });
     }
-  }, [startCoords, endCoords, routeGenerated]);
+  }, [startCoords, endCoords, routeGenerated, routeGeometry]);
 
   const handleStartSelection = useCallback((mode: 'start' | 'end') => {
     setSelectionMode(mode);
@@ -474,7 +483,7 @@ const SafetyMap = () => {
     });
   }, [toast]);
 
-  const handleGenerateRoute = useCallback(() => {
+  const handleGenerateRoute = useCallback(async () => {
     if (!startCoords || !endCoords) {
       toast({
         title: 'Missing Points',
@@ -484,49 +493,87 @@ const SafetyMap = () => {
       return;
     }
 
+    setIsGeneratingRoute(true);
+
     // Calculate distance and estimated time
     const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
     const walkingSpeed = 5; // km/h
     const timeMinutes = Math.round((distance / walkingSpeed) * 60);
 
-    setRouteInfo({
-      distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`,
-      time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
-    });
-
-    setRouteGenerated(true);
-
-    // Check if route passes through hazard zones
-    const routeBuffer = 0.01; // ~1km buffer
+    // Check for hazards along route
+    const routeBuffer = 0.02;
     const hazardsOnRoute = hazards.filter((hazard) => {
       if (!hazard.latitude || !hazard.longitude) return false;
-      const midLat = (startCoords.lat + endCoords.lat) / 2;
-      const midLng = (startCoords.lng + endCoords.lng) / 2;
-      const dist = Math.sqrt(
-        Math.pow(hazard.latitude - midLat, 2) + Math.pow(hazard.longitude - midLng, 2)
-      );
-      return dist < routeBuffer;
+      const minLat = Math.min(startCoords.lat, endCoords.lat) - routeBuffer;
+      const maxLat = Math.max(startCoords.lat, endCoords.lat) + routeBuffer;
+      const minLng = Math.min(startCoords.lng, endCoords.lng) - routeBuffer;
+      const maxLng = Math.max(startCoords.lng, endCoords.lng) + routeBuffer;
+      return hazard.latitude >= minLat && hazard.latitude <= maxLat && hazard.longitude >= minLng && hazard.longitude <= maxLng;
     });
 
-    if (hazardsOnRoute.length > 0) {
-      toast({
-        title: '⚠️ Hazard Warning',
-        description: `Your route passes near ${hazardsOnRoute.length} known hazard zone(s). Proceed with caution!`,
-        variant: 'destructive',
+    try {
+      const aiResponse = await generateRouteMutation.mutateAsync({
+        startCoords,
+        endCoords,
+        hazards: hazardsOnRoute.map(h => ({
+          type: h.type,
+          severity: h.severity,
+          lat: h.latitude!,
+          lng: h.longitude!,
+          description: h.description || undefined,
+        })),
+        totalDistance: distance,
+        walkingTime: timeMinutes,
       });
-    } else {
-      toast({
-        title: '✅ Safe Route Generated',
-        description: 'Your route avoids known hazard zones.',
+
+      // Store actual road geometry
+      setRouteGeometry(aiResponse.routeGeometry || null);
+
+      setRouteInfo({
+        distance: aiResponse.summary?.match(/([\d.]+)\s*km/)?.[0] || (distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`),
+        time: aiResponse.summary?.match(/~?(\d+)\s*min/)?.[0] || (timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`),
       });
+
+      setRouteGenerated(true);
+
+      if (aiResponse.hazardStatus === 'HAZARDS_PRESENT') {
+        toast({
+          title: '⚠️ Hazard Warning',
+          description: aiResponse.summary || `${hazardsOnRoute.length} hazard(s) detected near your route.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: '✅ Safe Route Generated',
+          description: 'Route follows actual roads. No known hazards detected.',
+        });
+      }
+    } catch (error) {
+      console.error('Route generation failed, using fallback:', error);
+      
+      // Fallback to straight line
+      setRouteGeometry(null);
+      setRouteInfo({
+        distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`,
+        time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
+      });
+      setRouteGenerated(true);
+
+      toast({
+        title: '📍 Route Generated',
+        description: 'Using estimated route. Road data temporarily unavailable.',
+      });
+    } finally {
+      setIsGeneratingRoute(false);
     }
-  }, [startCoords, endCoords, hazards, toast]);
+  }, [startCoords, endCoords, hazards, toast, generateRouteMutation]);
 
   const handleClearRoute = useCallback(() => {
     setStartCoords(null);
     setEndCoords(null);
     setRouteGenerated(false);
     setRouteInfo(null);
+    setRouteGeometry(null);
     setIsSelectingRoute(false);
     setSelectionMode(null);
   }, []);
@@ -596,11 +643,15 @@ const SafetyMap = () => {
             <div className="flex gap-2 mb-3">
               <Button 
                 className="flex-1" 
-                disabled={!canGenerateRoute}
+                disabled={!canGenerateRoute || isGeneratingRoute}
                 onClick={handleGenerateRoute}
               >
-                <Route className="w-4 h-4 mr-2" />
-                {routeGenerated ? 'Route Generated' : 'Generate Route'}
+                {isGeneratingRoute ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Route className="w-4 h-4 mr-2" />
+                )}
+                {isGeneratingRoute ? 'Generating...' : routeGenerated ? 'Route Generated' : 'Generate Route'}
               </Button>
               <Button variant="outline" onClick={handleClearRoute}>
                 <X className="w-4 h-4 mr-1" />
