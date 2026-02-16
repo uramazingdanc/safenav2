@@ -355,32 +355,54 @@ const VerificationDialog = ({
               ref={selfieInputRef}
               type="file"
               accept="image/*"
-              
               className="hidden"
               onChange={onSelfieSelect}
             />
-            <div 
-              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
-                selfiePreview 
-                  ? 'border-primary bg-primary/5' 
-                  : 'border-muted-foreground/25 hover:border-primary/50'
-              }`}
-              onClick={() => selfieInputRef.current?.click()}
-            >
-              {selfiePreview ? (
+            {selfiePreview ? (
+              <div 
+                className="border-2 border-primary bg-primary/5 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors"
+                onClick={() => selfieInputRef.current?.click()}
+              >
                 <img 
                   src={selfiePreview} 
                   alt="Selfie Preview" 
                   className="max-h-32 mx-auto rounded-lg object-contain"
                 />
-              ) : (
-                <div className="py-2">
-                  <User className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium">Upload Selfie</p>
-                  <p className="text-xs text-muted-foreground">Upload a clear photo of your face</p>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <div 
+                  className="flex-1 border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors border-muted-foreground/25 hover:border-primary/50"
+                  onClick={() => {
+                    if (selfieInputRef.current) {
+                      selfieInputRef.current.removeAttribute('capture');
+                      selfieInputRef.current.click();
+                    }
+                  }}
+                >
+                  <div className="py-2">
+                    <Upload className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium">Upload</p>
+                    <p className="text-xs text-muted-foreground">From gallery</p>
+                  </div>
                 </div>
-              )}
-            </div>
+                <div 
+                  className="flex-1 border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors border-muted-foreground/25 hover:border-primary/50"
+                  onClick={() => {
+                    if (selfieInputRef.current) {
+                      selfieInputRef.current.setAttribute('capture', 'user');
+                      selfieInputRef.current.click();
+                    }
+                  }}
+                >
+                  <div className="py-2">
+                    <Camera className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium">Take Selfie</p>
+                    <p className="text-xs text-muted-foreground">Open camera</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Guidelines */}
