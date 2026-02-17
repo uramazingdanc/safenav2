@@ -8,15 +8,22 @@ import {
   Loader2,
   RefreshCw,
   Eye,
-  Filter
+  Filter,
+  Navigation
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface HazardReport {
@@ -37,6 +44,7 @@ const IncidentFeed = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending'>('pending');
+  const [selectedReport, setSelectedReport] = useState<HazardReport | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -199,6 +207,7 @@ const IncidentFeed = () => {
   };
 
   return (
+    <>
     <Card className="bg-command-muted/30 border-command-muted">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
@@ -247,11 +256,12 @@ const IncidentFeed = () => {
               <div
                 key={report.id}
                 className={cn(
-                  "p-4 bg-command rounded-xl border transition-all duration-200",
+                  "p-4 bg-command rounded-xl border transition-all duration-200 cursor-pointer",
                   report.status === 'pending' 
                     ? "border-yellow-500/30 hover:border-yellow-500/50" 
                     : "border-command-muted hover:border-command-muted/80"
                 )}
+                onClick={() => setSelectedReport(report)}
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -305,7 +315,7 @@ const IncidentFeed = () => {
 
                 {/* Actions - Only show for pending reports */}
                 {report.status === 'pending' && (
-                  <div className="flex gap-2 pt-2 border-t border-command-muted">
+                  <div className="flex gap-2 pt-2 border-t border-command-muted" onClick={(e) => e.stopPropagation()}>
                     <Button 
                       size="sm" 
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white h-9"
@@ -350,6 +360,113 @@ const IncidentFeed = () => {
         )}
       </CardContent>
     </Card>
+
+    {/* Report Detail Dialog */}
+    <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+      <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md max-h-[90vh] overflow-y-auto">
+        {selectedReport && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <AlertTriangle className="w-5 h-5 text-orange-400" />
+                {selectedReport.hazard_type}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-400">Status:</span>
+                {getStatusBadge(selectedReport.status)}
+              </div>
+
+              {/* Location */}
+              <div>
+                <span className="text-sm text-slate-400">Location</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <MapPin className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm">{selectedReport.location}</span>
+                </div>
+              </div>
+
+              {/* Coordinates */}
+              {(selectedReport.latitude && selectedReport.longitude) && (
+                <div>
+                  <span className="text-sm text-slate-400">Coordinates</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Navigation className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-mono">
+                      {selectedReport.latitude.toFixed(6)}, {selectedReport.longitude.toFixed(6)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {selectedReport.description && (
+                <div>
+                  <span className="text-sm text-slate-400">Description</span>
+                  <p className="text-sm mt-1">{selectedReport.description}</p>
+                </div>
+              )}
+
+              {/* Photo */}
+              {selectedReport.photo_url && (
+                <div>
+                  <span className="text-sm text-slate-400">Photo Evidence</span>
+                  <img 
+                    src={selectedReport.photo_url} 
+                    alt="Incident" 
+                    className="w-full rounded-lg mt-1 max-h-64 object-contain bg-black/20"
+                  />
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="space-y-1 pt-2 border-t border-slate-700">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">Reported</span>
+                  <span>{format(new Date(selectedReport.created_at), 'MMM d, yyyy h:mm a')}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">Reporter ID</span>
+                  <span className="font-mono text-slate-300 truncate ml-2 max-w-[180px]">{selectedReport.reporter_id}</span>
+                </div>
+              </div>
+
+              {/* Actions for pending */}
+              {selectedReport.status === 'pending' && (
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => {
+                      handleVerify(selectedReport.id);
+                      setSelectedReport(null);
+                    }}
+                  >
+                    <Check className="w-4 h-4 mr-1" />
+                    Verify
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => {
+                      handleReject(selectedReport.id);
+                      setSelectedReport(null);
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Reject
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  </>
   );
 };
 

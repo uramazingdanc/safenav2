@@ -111,33 +111,19 @@ const AdminUsers = () => {
     
     setIsDeleting(true);
     try {
-      // Delete from profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', userToDelete.userId);
-      
-      if (profileError) throw profileError;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
 
-      // Delete from user_roles table
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userToDelete.userId);
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { user_id: userToDelete.userId },
+      });
 
-      // Delete hazard reports by this user
-      await supabase
-        .from('hazard_reports')
-        .delete()
-        .eq('reporter_id', userToDelete.userId);
-
-      // Note: Deleting from auth.users requires admin privileges
-      // This would need an edge function or admin action
+      if (response.error) throw new Error(response.error.message || 'Failed to delete user');
+      if (response.data?.error) throw new Error(response.data.error);
       
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      queryClient.invalidateQueries({ queryKey: ['realtime-users'] });
       
-      toast.success('User has been removed successfully');
+      toast.success('User has been permanently deleted');
       setUserToDelete(null);
     } catch (error: any) {
       console.error('Delete error:', error);
@@ -322,11 +308,11 @@ const AdminUsers = () => {
       <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
         <AlertDialogContent className="bg-slate-900 border-slate-700">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Delete User</AlertDialogTitle>
+            <AlertDialogTitle className="text-white">Force Delete User</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
-              Are you sure you want to delete this user? 
-              This will permanently remove their profile, verification data, and all hazard reports they submitted.
-              This action cannot be undone.
+              Are you sure you want to permanently delete <span className="text-white font-medium">{userToDelete?.name}</span>? 
+              This will remove their authentication account, profile, verification data, and all hazard reports. 
+              The user will no longer be able to log in. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
