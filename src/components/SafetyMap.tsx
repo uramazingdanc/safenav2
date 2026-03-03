@@ -294,6 +294,7 @@ const SafetyMap = () => {
               type: feature.get('type'),
               severity: feature.get('severity'),
               location: feature.get('location'),
+              photo_url: feature.get('photo_url'),
             },
             position: coordinates,
           });
@@ -356,6 +357,7 @@ const SafetyMap = () => {
           type: hazard.type,
           severity: hazard.severity,
           location: hazard.location,
+          photo_url: hazard.photo_url,
           featureType: 'hazard',
         });
         feature.setStyle(getHazardStyle(hazard.type, hazard.severity));
@@ -783,6 +785,13 @@ const SafetyMap = () => {
                     Severity: {popupContent.data.severity}
                   </p>
                   <p className="text-xs">{popupContent.data.location}</p>
+                  {popupContent.data.photo_url && (
+                    <img 
+                      src={popupContent.data.photo_url} 
+                      alt="Hazard photo" 
+                      className="w-full h-20 object-cover rounded mt-2 border"
+                    />
+                  )}
                 </>
               ) : popupContent.type === 'evac' && popupContent.data ? (
                 <>
