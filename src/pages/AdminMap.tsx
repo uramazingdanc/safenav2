@@ -181,6 +181,7 @@ const AdminMap = () => {
             location: h.location,
             status: h.status,
             description: h.description,
+            photo_url: h.photo_url,
           });
           hazardSourceRef.current!.addFeature(feature);
         }
@@ -390,7 +391,7 @@ const AdminMap = () => {
         )}
 
         {/* Popup Element */}
-        <div ref={popupRef} className="absolute bg-command border border-slate-700 rounded-lg p-3 shadow-xl min-w-[220px] z-50">
+        <div ref={popupRef} className="bg-command border border-slate-700 rounded-lg p-3 shadow-xl min-w-[220px]" style={{ display: selectedFeature ? 'block' : 'none' }}>
           {selectedFeature && (
             <div className="text-white">
               <div className="flex items-center gap-2 mb-2">
@@ -406,11 +407,21 @@ const AdminMap = () => {
                   {selectedFeature.severity}
                 </Badge>
               )}
+              {selectedFeature.description && (
+                <p className="text-xs text-slate-300 mt-1">{selectedFeature.description}</p>
+              )}
               {selectedFeature.location && (
                 <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                   <Map className="w-3 h-3" />
                   {selectedFeature.location}
                 </p>
+              )}
+              {selectedFeature.photo_url && (
+                <img 
+                  src={selectedFeature.photo_url} 
+                  alt="Hazard photo" 
+                  className="w-full h-24 object-cover rounded mt-2 border border-slate-600"
+                />
               )}
               {selectedFeature.capacity && (
                 <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">

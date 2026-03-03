@@ -351,13 +351,33 @@ const ReportHazard = () => {
                         </Button>
                       </div>
                     ) : (
-                      <div 
-                        className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">Upload Photo</p>
-                        <p className="text-xs text-muted-foreground">Tap to upload photo evidence</p>
+                      <div className="flex gap-2">
+                        <div 
+                          className="flex-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
+                          onClick={() => {
+                            if (fileInputRef.current) {
+                              fileInputRef.current.removeAttribute('capture');
+                              fileInputRef.current.click();
+                            }
+                          }}
+                        >
+                          <Upload className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm font-medium">Upload</p>
+                          <p className="text-xs text-muted-foreground">From gallery</p>
+                        </div>
+                        <div 
+                          className="flex-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
+                          onClick={() => {
+                            if (fileInputRef.current) {
+                              fileInputRef.current.setAttribute('capture', 'environment');
+                              fileInputRef.current.click();
+                            }
+                          }}
+                        >
+                          <AlertTriangle className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm font-medium">Take Photo</p>
+                          <p className="text-xs text-muted-foreground">Open camera</p>
+                        </div>
                       </div>
                     )}
                   </>
