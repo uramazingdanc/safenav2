@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Map, Layers, AlertTriangle, Building2, Users, Radio, Eye, EyeOff, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +42,6 @@ const getSeverityColors = (severity: string) => {
 
 const AdminMap = () => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
   const hazardSourceRef = useRef<VectorSource | null>(null);
   const centerSourceRef = useRef<VectorSource | null>(null);
@@ -50,7 +50,7 @@ const AdminMap = () => {
   const [isEvacModalOpen, setIsEvacModalOpen] = useState(false);
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
-  
+  const [popupHost, setPopupHost] = useState<HTMLDivElement | null>(null);
 
   // Filter toggles
   const [showHazards, setShowHazards] = useState(true);
@@ -60,6 +60,12 @@ const AdminMap = () => {
   // Real-time data from Supabase
   const { data: hazards } = useVerifiedHazards();
   const { data: centers } = useRealtimeEvacuationCenters();
+
+  // Control popup visibility via DOM (not React re-render)
+  useEffect(() => {
+    if (!popupHost) return;
+    popupHost.style.display = selectedFeature ? 'block' : 'none';
+  }, [popupHost, selectedFeature]);
 
   // Initialize map
   useEffect(() => {
@@ -90,7 +96,7 @@ const AdminMap = () => {
       },
     });
 
-    // Evacuation center layer (Green markers)
+    // Evacuation center layer
     const centerSource = new VectorSource();
     centerSourceRef.current = centerSource;
     const centerLayer = new VectorLayer({
@@ -113,9 +119,16 @@ const AdminMap = () => {
       },
     });
 
-    // Popup overlay
+    // Create popup host element managed by OpenLayers (not React)
+    const popupEl = document.createElement('div');
+    popupEl.className = 'ol-popup';
+    popupEl.style.position = 'absolute';
+    popupEl.style.minWidth = '220px';
+    popupEl.style.display = 'none';
+    setPopupHost(popupEl);
+
     const popup = new Overlay({
-      element: popupRef.current!,
+      element: popupEl,
       positioning: 'bottom-center',
       offset: [0, -20],
       autoPan: true,
@@ -157,6 +170,8 @@ const AdminMap = () => {
     mapInstanceRef.current = map;
 
     return () => {
+      popup.setPosition(undefined);
+      popupEl.remove();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.setTarget(undefined);
         mapInstanceRef.current = null;
@@ -226,7 +241,6 @@ const AdminMap = () => {
           <Radio className="w-3 h-3 text-emerald-400 animate-pulse ml-auto" />
         </div>
 
-
         {/* Layer Filters */}
         <Card className="bg-slate-900/50 border-slate-700">
           <CardHeader className="pb-2">
@@ -280,42 +294,20 @@ const AdminMap = () => {
               <div>
                 <p className="text-xs text-slate-500 mb-1">Hazard Types</p>
                 <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span>🌊</span><span>Flood</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span>⛰️</span><span>Landslide</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span>🚧</span><span>Road Damage</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span>🚗</span><span>Road Obstruction</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <span>⚠️</span><span>Other</span>
-                  </div>
+                  <div className="flex items-center gap-2 text-slate-300"><span>🌊</span><span>Flood</span></div>
+                  <div className="flex items-center gap-2 text-slate-300"><span>⛰️</span><span>Landslide</span></div>
+                  <div className="flex items-center gap-2 text-slate-300"><span>🚧</span><span>Road Damage</span></div>
+                  <div className="flex items-center gap-2 text-slate-300"><span>🚗</span><span>Road Obstruction</span></div>
+                  <div className="flex items-center gap-2 text-slate-300"><span>⚠️</span><span>Other</span></div>
                 </div>
               </div>
               <div className="border-t border-slate-700 pt-2">
                 <p className="text-xs text-slate-500 mb-1">Severity</p>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                    <span className="text-slate-400">Low</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="w-3 h-3 rounded-full bg-orange-500" />
-                    <span className="text-slate-400">Medium</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="w-3 h-3 rounded-full bg-red-600" />
-                    <span className="text-slate-400">High</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="w-3 h-3 rounded-full bg-red-800 animate-pulse" />
-                    <span className="text-slate-400">Critical</span>
-                  </div>
+                  <div className="flex items-center gap-2 text-xs"><span className="w-3 h-3 rounded-full bg-yellow-500" /><span className="text-slate-400">Low</span></div>
+                  <div className="flex items-center gap-2 text-xs"><span className="w-3 h-3 rounded-full bg-orange-500" /><span className="text-slate-400">Medium</span></div>
+                  <div className="flex items-center gap-2 text-xs"><span className="w-3 h-3 rounded-full bg-red-600" /><span className="text-slate-400">High</span></div>
+                  <div className="flex items-center gap-2 text-xs"><span className="w-3 h-3 rounded-full bg-red-800 animate-pulse" /><span className="text-slate-400">Critical</span></div>
                 </div>
               </div>
             </CardContent>
@@ -345,7 +337,6 @@ const AdminMap = () => {
       <div className="flex-1 relative">
         <div ref={mapRef} className="w-full h-full" />
 
-
         {/* Mobile Legend Toggle */}
         <Button
           variant="secondary"
@@ -362,21 +353,11 @@ const AdminMap = () => {
           <div className="md:hidden absolute top-14 right-4 z-10 bg-slate-900/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-slate-700 max-w-[180px]">
             <p className="text-xs font-semibold text-white mb-2">Hazard Types</p>
             <div className="space-y-1 text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <span>🌊</span><span>Flood</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <span>⛰️</span><span>Landslide</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <span>🚧</span><span>Road Damage</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <span>🚗</span><span>Road Obstruction</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <span>⚠️</span><span>Other</span>
-              </div>
+              <div className="flex items-center gap-2 text-slate-300"><span>🌊</span><span>Flood</span></div>
+              <div className="flex items-center gap-2 text-slate-300"><span>⛰️</span><span>Landslide</span></div>
+              <div className="flex items-center gap-2 text-slate-300"><span>🚧</span><span>Road Damage</span></div>
+              <div className="flex items-center gap-2 text-slate-300"><span>🚗</span><span>Road Obstruction</span></div>
+              <div className="flex items-center gap-2 text-slate-300"><span>⚠️</span><span>Other</span></div>
             </div>
             <div className="border-t border-slate-600 mt-2 pt-2">
               <p className="text-xs text-slate-400">Severity:</p>
@@ -390,57 +371,61 @@ const AdminMap = () => {
           </div>
         )}
 
-        {/* Popup Element */}
-        <div ref={popupRef} className="bg-command border border-slate-700 rounded-lg p-3 shadow-xl min-w-[220px]" style={{ display: selectedFeature ? 'block' : 'none' }}>
-          {selectedFeature && (
-            <div className="text-white">
-              <div className="flex items-center gap-2 mb-2">
-                {selectedFeature.type === 'hazard' ? (
-                  <span className="text-lg">{getHazardEmoji(selectedFeature.name)}</span>
-                ) : (
-                  <Building2 className="w-4 h-4 text-emerald-400" />
-                )}
-                <span className="font-semibold">{selectedFeature.name}</span>
-              </div>
-              {selectedFeature.severity && (
-                <Badge className={`text-xs ${getSeverityColors(selectedFeature.severity).bg} text-white mb-1`}>
-                  {selectedFeature.severity}
-                </Badge>
+        {/* Popup rendered via React Portal into OpenLayers-managed element */}
+        {popupHost &&
+          createPortal(
+            <div className="bg-command border border-slate-700 rounded-lg p-3 shadow-xl min-w-[220px]">
+              {selectedFeature && (
+                <div className="text-white">
+                  <div className="flex items-center gap-2 mb-2">
+                    {selectedFeature.type === 'hazard' ? (
+                      <span className="text-lg">{getHazardEmoji(selectedFeature.name)}</span>
+                    ) : (
+                      <Building2 className="w-4 h-4 text-emerald-400" />
+                    )}
+                    <span className="font-semibold">{selectedFeature.name}</span>
+                  </div>
+                  {selectedFeature.severity && (
+                    <Badge className={`text-xs ${getSeverityColors(selectedFeature.severity).bg} text-white mb-1`}>
+                      {selectedFeature.severity}
+                    </Badge>
+                  )}
+                  {selectedFeature.description && (
+                    <p className="text-xs text-slate-300 mt-1">{selectedFeature.description}</p>
+                  )}
+                  {selectedFeature.location && (
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                      <Map className="w-3 h-3" />
+                      {selectedFeature.location}
+                    </p>
+                  )}
+                  {selectedFeature.photo_url && (
+                    <img 
+                      src={selectedFeature.photo_url} 
+                      alt="Hazard photo" 
+                      className="w-full h-24 object-cover rounded mt-2 border border-slate-600"
+                    />
+                  )}
+                  {selectedFeature.capacity && (
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      Capacity: {selectedFeature.occupancy}/{selectedFeature.capacity}
+                    </p>
+                  )}
+                  {selectedFeature.status && (
+                    <Badge className={`text-xs mt-2 ${
+                      selectedFeature.status === 'open' ? 'bg-emerald-500/20 text-emerald-400' :
+                      selectedFeature.status === 'active' ? 'bg-rose-500/20 text-rose-400' :
+                      'bg-amber-500/20 text-amber-400'
+                    }`}>
+                      {selectedFeature.status}
+                    </Badge>
+                  )}
+                </div>
               )}
-              {selectedFeature.description && (
-                <p className="text-xs text-slate-300 mt-1">{selectedFeature.description}</p>
-              )}
-              {selectedFeature.location && (
-                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                  <Map className="w-3 h-3" />
-                  {selectedFeature.location}
-                </p>
-              )}
-              {selectedFeature.photo_url && (
-                <img 
-                  src={selectedFeature.photo_url} 
-                  alt="Hazard photo" 
-                  className="w-full h-24 object-cover rounded mt-2 border border-slate-600"
-                />
-              )}
-              {selectedFeature.capacity && (
-                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                  <Users className="w-3 h-3" />
-                  Capacity: {selectedFeature.occupancy}/{selectedFeature.capacity}
-                </p>
-              )}
-              {selectedFeature.status && (
-                <Badge className={`text-xs mt-2 ${
-                  selectedFeature.status === 'open' ? 'bg-emerald-500/20 text-emerald-400' :
-                  selectedFeature.status === 'active' ? 'bg-rose-500/20 text-rose-400' :
-                  'bg-amber-500/20 text-amber-400'
-                }`}>
-                  {selectedFeature.status}
-                </Badge>
-              )}
-            </div>
+            </div>,
+            popupHost
           )}
-        </div>
       </div>
 
       {/* Modals */}

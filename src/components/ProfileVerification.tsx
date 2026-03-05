@@ -351,10 +351,20 @@ const VerificationDialog = ({
           {/* Selfie Upload */}
           <div className="space-y-2">
             <Label className="font-medium">2. Face Selfie</Label>
+            {/* Separate input for gallery upload (no capture) */}
             <input
               ref={selfieInputRef}
               type="file"
               accept="image/*"
+              className="hidden"
+              onChange={onSelfieSelect}
+            />
+            {/* Separate input for front camera capture */}
+            <input
+              id="selfie-camera-input"
+              type="file"
+              accept="image/*"
+              capture="user"
               className="hidden"
               onChange={onSelfieSelect}
             />
@@ -373,12 +383,7 @@ const VerificationDialog = ({
               <div className="flex gap-2">
                 <div 
                   className="flex-1 border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors border-muted-foreground/25 hover:border-primary/50"
-                  onClick={() => {
-                    if (selfieInputRef.current) {
-                      selfieInputRef.current.removeAttribute('capture');
-                      selfieInputRef.current.click();
-                    }
-                  }}
+                  onClick={() => selfieInputRef.current?.click()}
                 >
                   <div className="py-2">
                     <Upload className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />
@@ -388,12 +393,7 @@ const VerificationDialog = ({
                 </div>
                 <div 
                   className="flex-1 border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors border-muted-foreground/25 hover:border-primary/50"
-                  onClick={() => {
-                    if (selfieInputRef.current) {
-                      selfieInputRef.current.setAttribute('capture', 'user');
-                      selfieInputRef.current.click();
-                    }
-                  }}
+                  onClick={() => document.getElementById('selfie-camera-input')?.click()}
                 >
                   <div className="py-2">
                     <Camera className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />

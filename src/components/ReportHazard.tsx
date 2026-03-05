@@ -317,7 +317,7 @@ const ReportHazard = () => {
               {/* Photo Evidence */}
               <div className="space-y-2">
                 <Label>Photo Evidence *</Label>
-                {!isVerified ? (
+              {!isVerified ? (
                   <div className="border-2 border-dashed border-destructive/30 rounded-lg p-6 text-center bg-destructive/5">
                     <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-destructive" />
                     <p className="text-sm font-medium text-destructive">Verification Required</p>
@@ -325,10 +325,20 @@ const ReportHazard = () => {
                   </div>
                 ) : (
                   <>
+                    {/* Separate input for gallery upload (no capture attribute) */}
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoSelect}
+                    />
+                    {/* Separate input for camera capture */}
+                    <input
+                      id="camera-input-hazard"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
                       className="hidden"
                       onChange={handlePhotoSelect}
                     />
@@ -354,12 +364,7 @@ const ReportHazard = () => {
                       <div className="flex gap-2">
                         <div 
                           className="flex-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
-                          onClick={() => {
-                            if (fileInputRef.current) {
-                              fileInputRef.current.removeAttribute('capture');
-                              fileInputRef.current.click();
-                            }
-                          }}
+                          onClick={() => fileInputRef.current?.click()}
                         >
                           <Upload className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />
                           <p className="text-sm font-medium">Upload</p>
@@ -367,12 +372,7 @@ const ReportHazard = () => {
                         </div>
                         <div 
                           className="flex-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
-                          onClick={() => {
-                            if (fileInputRef.current) {
-                              fileInputRef.current.setAttribute('capture', 'environment');
-                              fileInputRef.current.click();
-                            }
-                          }}
+                          onClick={() => document.getElementById('camera-input-hazard')?.click()}
                         >
                           <AlertTriangle className="w-7 h-7 mx-auto mb-2 text-muted-foreground" />
                           <p className="text-sm font-medium">Take Photo</p>
