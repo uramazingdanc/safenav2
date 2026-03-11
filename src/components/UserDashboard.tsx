@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useProfile } from '@/hooks/useProfiles';
+import UserNotifications from '@/components/UserNotifications';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
