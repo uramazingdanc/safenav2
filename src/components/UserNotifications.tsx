@@ -50,7 +50,7 @@ const UserNotifications = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload) => {
-          const n = payload.new as Notification;
+          const n = payload.new as UserNotification;
           if (n.related_user_id === user.id && 
               ['verification_result', 'report_result'].includes(n.related_entity_type || '')) {
             setNotifications(prev => [n, ...prev].slice(0, 10));
