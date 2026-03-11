@@ -331,7 +331,7 @@ const IncidentFeed = () => {
                       ) : (
                         <>
                           <Check className="w-4 h-4 mr-1" />
-                          Verify
+                          Approve
                         </>
                       )}
                     </Button>
