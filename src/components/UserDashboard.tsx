@@ -63,6 +63,8 @@ const UserDashboard = () => {
       </div>
 
       <div className="p-4 space-y-6 -mt-2">
+        {/* User Notifications */}
+        <UserNotifications />
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action, index) => (
