@@ -115,18 +115,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) throw error;
 
-      // Update profile with additional info after signup
-      if (metadata && user) {
-        await supabase
-          .from('profiles')
-          .update({
-            full_name: metadata.full_name,
-            phone_number: metadata.phone_number,
-            barangay: metadata.barangay
-          })
-          .eq('user_id', user.id);
-      }
-
       return { error: null };
     } catch (error) {
       return { error: error as Error };
