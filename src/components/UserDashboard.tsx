@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useProfile } from '@/hooks/useProfiles';
+import UserNotifications from '@/components/UserNotifications';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -62,6 +63,8 @@ const UserDashboard = () => {
       </div>
 
       <div className="p-4 space-y-6 -mt-2">
+        {/* User Notifications */}
+        <UserNotifications />
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action, index) => (

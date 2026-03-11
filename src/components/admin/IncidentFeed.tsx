@@ -140,34 +140,14 @@ const IncidentFeed = () => {
 
       if (error) throw error;
 
-      // Also insert into hazards table so it appears on the user-facing map
-      if (report) {
-        const { error: hazardError } = await supabase
-          .from('hazards')
-          .insert({
-            type: report.hazard_type,
-            description: report.description,
-            location: report.location,
-            latitude: report.latitude,
-            longitude: report.longitude,
-            photo_url: report.photo_url,
-            severity: 'medium',
-            status: 'active',
-          });
-
-        if (hazardError) {
-          console.error('Failed to create hazard from report:', hazardError);
-        }
-      }
-
       // Invalidate queries to refresh admin stats and maps
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       queryClient.invalidateQueries({ queryKey: ['hazardReports'] });
       queryClient.invalidateQueries({ queryKey: ['hazards'] });
 
       toast({
-        title: '✓ Report Verified',
-        description: 'The hazard report has been verified and added to the live map.',
+        title: '✓ Report Approved',
+        description: 'The hazard report has been approved.',
       });
     } catch (error) {
       toast({
@@ -351,7 +331,7 @@ const IncidentFeed = () => {
                       ) : (
                         <>
                           <Check className="w-4 h-4 mr-1" />
-                          Verify
+                          Approve
                         </>
                       )}
                     </Button>
@@ -470,7 +450,7 @@ const IncidentFeed = () => {
                     }}
                   >
                     <Check className="w-4 h-4 mr-1" />
-                    Verify
+                    Approve
                   </Button>
                   <Button 
                     size="sm" 

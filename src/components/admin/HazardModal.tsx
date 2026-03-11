@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { AlertTriangle, Loader2, Radio, Camera, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -121,6 +122,24 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
     }
 
     try {
+      // Upload photo to storage first
+      let photoUrl: string | null = null;
+      if (photoFile) {
+        const ext = photoFile.name.split('.').pop();
+        const fileName = `admin/${Date.now()}_hazard.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('hazard_photos')
+          .upload(fileName, photoFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('hazard_photos')
+          .getPublicUrl(fileName);
+
+        photoUrl = publicUrlData.publicUrl;
+      }
+
       await createHazard.mutateAsync({
         type: formData.type,
         severity: formData.severity as 'low' | 'medium' | 'high' | 'critical',
@@ -129,6 +148,7 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
         latitude: coordinates.lat,
         longitude: coordinates.lng,
         status: 'active',
+        photo_url: photoUrl,
       });
 
       toast({
