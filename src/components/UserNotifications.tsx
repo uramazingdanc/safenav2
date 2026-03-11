@@ -35,7 +35,7 @@ const UserNotifications = () => {
       .limit(10);
 
     if (!error && data) {
-      setNotifications(data as Notification[]);
+      setNotifications(data as UserNotification[]);
     }
     setIsLoading(false);
   };
