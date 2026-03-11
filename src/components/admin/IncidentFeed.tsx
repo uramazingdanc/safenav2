@@ -140,26 +140,6 @@ const IncidentFeed = () => {
 
       if (error) throw error;
 
-      // Also insert into hazards table so it appears on the user-facing map
-      if (report) {
-        const { error: hazardError } = await supabase
-          .from('hazards')
-          .insert({
-            type: report.hazard_type,
-            description: report.description,
-            location: report.location,
-            latitude: report.latitude,
-            longitude: report.longitude,
-            photo_url: report.photo_url,
-            severity: 'medium',
-            status: 'active',
-          });
-
-        if (hazardError) {
-          console.error('Failed to create hazard from report:', hazardError);
-        }
-      }
-
       // Invalidate queries to refresh admin stats and maps
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       queryClient.invalidateQueries({ queryKey: ['hazardReports'] });
