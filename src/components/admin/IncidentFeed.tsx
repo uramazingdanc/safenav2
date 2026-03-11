@@ -146,8 +146,8 @@ const IncidentFeed = () => {
       queryClient.invalidateQueries({ queryKey: ['hazards'] });
 
       toast({
-        title: '✓ Report Verified',
-        description: 'The hazard report has been verified and added to the live map.',
+        title: '✓ Report Approved',
+        description: 'The hazard report has been approved.',
       });
     } catch (error) {
       toast({
