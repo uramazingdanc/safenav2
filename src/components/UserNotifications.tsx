@@ -20,7 +20,7 @@ interface UserNotification {
 
 const UserNotifications = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchNotifications = async () => {
