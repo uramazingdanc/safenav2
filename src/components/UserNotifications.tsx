@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 
-interface Notification {
+interface UserNotification {
   id: string;
   message: string;
   type: string;
@@ -14,6 +14,7 @@ interface Notification {
   is_read: boolean;
   created_at: string;
   related_entity_type: string | null;
+  related_user_id: string | null;
   metadata: any;
 }
 
