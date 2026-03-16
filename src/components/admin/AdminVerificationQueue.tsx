@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -61,7 +62,6 @@ const AdminVerificationQueue = () => {
   const reviewVerification = useReviewVerification();
   const queryClient = useQueryClient();
 
-  // Real-time subscription for verification updates
   useEffect(() => {
     const channel = supabase
       .channel('verification_queue')
@@ -210,14 +210,14 @@ const AdminVerificationQueue = () => {
         </CardContent>
       </Card>
 
-      {/* Review Modal with Side-by-Side Comparison */}
+      {/* Review Modal - Scrollable */}
       <Dialog open={!!selectedUser} onOpenChange={() => {
         setSelectedUser(null);
         setRejectReason('');
         setShowRejectInput(false);
       }}>
-        <DialogContent className="sm:max-w-4xl bg-slate-900 border-slate-700 text-white">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-4xl bg-slate-900 border-slate-700 text-white max-h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center gap-2 text-white">
               <Shield className="w-5 h-5 text-ocean" />
               Review Verification Request
@@ -225,16 +225,18 @@ const AdminVerificationQueue = () => {
           </DialogHeader>
 
           {selectedUser && (
-            <VerificationReviewContent
-              user={selectedUser}
-              showRejectInput={showRejectInput}
-              rejectReason={rejectReason}
-              setRejectReason={setRejectReason}
-              setShowRejectInput={setShowRejectInput}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              isProcessing={reviewVerification.isPending}
-            />
+            <ScrollArea className="max-h-[calc(90vh-80px)] px-6 pb-6">
+              <VerificationReviewContent
+                user={selectedUser}
+                showRejectInput={showRejectInput}
+                rejectReason={rejectReason}
+                setRejectReason={setRejectReason}
+                setShowRejectInput={setShowRejectInput}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                isProcessing={reviewVerification.isPending}
+              />
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>
@@ -273,7 +275,7 @@ const VerificationReviewContent = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-4">
       {/* User Info */}
       <div className="flex items-center gap-3 pb-4 border-b border-slate-700">
         <Avatar className="w-12 h-12">

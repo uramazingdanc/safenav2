@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Bell, CheckCircle, XCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { Bell, CheckCircle, XCircle, AlertTriangle, Info, Loader2, BellOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,10 +19,22 @@ interface UserNotification {
   metadata: any;
 }
 
+const STORAGE_KEY = 'safenav-user-notifications-enabled';
+
 const UserNotifications = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [enabled, setEnabled] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === null ? true : stored === 'true';
+  });
+
+  const toggleEnabled = () => {
+    const next = !enabled;
+    setEnabled(next);
+    localStorage.setItem(STORAGE_KEY, String(next));
+  };
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -41,6 +54,7 @@ const UserNotifications = () => {
   };
 
   useEffect(() => {
+    if (!enabled) return;
     fetchNotifications();
 
     if (!user) return;
@@ -60,7 +74,7 @@ const UserNotifications = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, enabled]);
 
   const getIcon = (type: string, entityType: string | null) => {
     if (entityType === 'verification_result') {
@@ -76,48 +90,58 @@ const UserNotifications = () => {
     return <Info className="w-4 h-4 text-primary" />;
   };
 
-  if (isLoading) {
-    return (
-      <Card className="border-border">
-        <CardContent className="p-6 flex items-center justify-center">
-          <Loader2 className="w-5 h-5 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (notifications.length === 0) return null;
-
+  // Always show the toggle card
   return (
     <Card className="border-border">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Bell className="w-4 h-4 text-primary" />
-          Notifications
-          {notifications.filter(n => !n.is_read).length > 0 && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0">
-              {notifications.filter(n => !n.is_read).length}
-            </Badge>
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary" />
+            Notifications
+            {enabled && notifications.filter(n => !n.is_read).length > 0 && (
+              <Badge variant="destructive" className="text-xs px-1.5 py-0">
+                {notifications.filter(n => !n.is_read).length}
+              </Badge>
+            )}
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleEnabled}
+            className="h-7 px-2 text-xs"
+          >
+            {enabled ? <Bell className="w-3 h-3 mr-1" /> : <BellOff className="w-3 h-3 mr-1" />}
+            {enabled ? 'On' : 'Off'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {notifications.map((n) => (
-          <div
-            key={n.id}
-            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-              n.is_read ? 'bg-muted/30 border-border' : 'bg-primary/5 border-primary/20'
-            }`}
-          >
-            <div className="mt-0.5">{getIcon(n.type, n.related_entity_type)}</div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground">{n.message}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-              </p>
-            </div>
+        {!enabled ? (
+          <p className="text-sm text-muted-foreground text-center py-3">Notifications are turned off</p>
+        ) : isLoading ? (
+          <div className="flex items-center justify-center py-3">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
-        ))}
+        ) : notifications.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-3">No notifications yet</p>
+        ) : (
+          notifications.map((n) => (
+            <div
+              key={n.id}
+              className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                n.is_read ? 'bg-muted/30 border-border' : 'bg-primary/5 border-primary/20'
+              }`}
+            >
+              <div className="mt-0.5">{getIcon(n.type, n.related_entity_type)}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-foreground">{n.message}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );

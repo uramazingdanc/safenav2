@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogOut, Loader2, MapPin, Phone as PhoneIcon, Map, Phone, AlertTriangle, Shield } from 'lucide-react';
+import { LogOut, Loader2, MapPin, Phone as PhoneIcon, Map, Phone, AlertTriangle, Shield, Eye, EyeOff, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,8 @@ const UserProfile = () => {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [barangay, setBarangay] = useState('');
+  const [showEmail, setShowEmail] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -51,10 +53,34 @@ const UserProfile = () => {
     setIsEditOpen(true);
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow letters, spaces, dots, hyphens (no numbers/special chars)
+    if (/^[a-zA-Z\s.\-']*$/.test(value) && value.length <= 60) {
+      setFullName(value);
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow digits and + sign, max 13 chars (e.g. +639123456789)
+    if (/^[0-9+]*$/.test(value) && value.length <= 13) {
+      setPhoneNumber(value);
+    }
+  };
+
   const handleSaveProfile = async () => {
+    if (!fullName.trim()) {
+      toast.error('Full name is required');
+      return;
+    }
+    if (phoneNumber && !/^(09\d{9}|(\+63)\d{10})$/.test(phoneNumber)) {
+      toast.error('Please enter a valid Philippine phone number (e.g. 09123456789)');
+      return;
+    }
     try {
       await updateProfile.mutateAsync({
-        full_name: fullName,
+        full_name: fullName.trim(),
         phone_number: phoneNumber || null,
         barangay: barangay || null,
       });
@@ -72,6 +98,17 @@ const UserProfile = () => {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const maskEmail = (email: string) => {
+    const [local, domain] = email.split('@');
+    if (local.length <= 2) return `${local[0]}***@${domain}`;
+    return `${local[0]}${local[1]}${'*'.repeat(Math.min(local.length - 2, 6))}@${domain}`;
+  };
+
+  const maskPhone = (phone: string) => {
+    if (phone.length <= 4) return '****';
+    return phone.slice(0, 4) + '*'.repeat(phone.length - 7) + phone.slice(-3);
   };
 
   if (isLoading) {
@@ -96,7 +133,7 @@ const UserProfile = () => {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Profile Card - Simplified, no circles */}
+        {/* Profile Card */}
         <Card className="border-border">
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-4">
@@ -106,7 +143,14 @@ const UserProfile = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-foreground">{profile?.full_name || 'User'}</h2>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
+                  {/* Email with eye toggle */}
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Mail className="w-3 h-3" />
+                    <span>{showEmail ? user?.email : maskEmail(user?.email || '')}</span>
+                    <button onClick={() => setShowEmail(!showEmail)} className="p-0.5 hover:text-foreground">
+                      {showEmail ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    </button>
+                  </div>
                 </div>
               </div>
               <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -125,18 +169,22 @@ const UserProfile = () => {
                       <Input
                         id="fullName"
                         value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
+                        onChange={handleNameChange}
                         placeholder={t.enterFullName}
+                        maxLength={60}
                       />
+                      <p className="text-xs text-muted-foreground">Letters only, max 60 characters</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">{t.phoneNumber}</Label>
                       <Input
                         id="phone"
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="e.g., 09123456789"
+                        onChange={handlePhoneChange}
+                        placeholder="09123456789"
+                        maxLength={13}
                       />
+                      <p className="text-xs text-muted-foreground">Philippine format: 09XXXXXXXXX</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="barangay">{t.barangay}</Label>
@@ -180,7 +228,10 @@ const UserProfile = () => {
               {profile?.phone_number && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <PhoneIcon className="w-4 h-4" />
-                  <span>{profile.phone_number}</span>
+                  <span>{showPhone ? profile.phone_number : maskPhone(profile.phone_number)}</span>
+                  <button onClick={() => setShowPhone(!showPhone)} className="p-0.5 hover:text-foreground">
+                    {showPhone ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </button>
                 </div>
               )}
             </div>
