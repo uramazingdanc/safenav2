@@ -262,7 +262,6 @@ const LoginScreen = () => {
                   </button>
                 </div>
               </div>
-              </div>
 
               {!isSignUp && (
                 <div className="text-right">
