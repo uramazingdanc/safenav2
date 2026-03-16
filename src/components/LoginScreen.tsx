@@ -54,6 +54,7 @@ const LoginScreen = () => {
   const [showTerms, setShowTerms] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { t } = useLanguage();
   const { user, isAdmin, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
