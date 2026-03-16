@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, HelpCircle, Loader2 } from "lucide-react";
+import { Shield, HelpCircle, Loader2, Eye as EyeIcon, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,7 @@ const LoginScreen = () => {
   const [showTerms, setShowTerms] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { t } = useLanguage();
   const { user, isAdmin, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -178,9 +179,13 @@ const LoginScreen = () => {
                       type="text"
                       placeholder="Enter your full name"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^[a-zA-Z\s.\-']*$/.test(val) && val.length <= 60) setFullName(val);
+                      }}
                       required
                       disabled={isLoading}
+                      maxLength={60}
                     />
                   </div>
 
@@ -190,11 +195,15 @@ const LoginScreen = () => {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="Enter your phone number"
+                      placeholder="09123456789"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^[0-9+]*$/.test(val) && val.length <= 13) setPhoneNumber(val);
+                      }}
                       required
                       disabled={isLoading}
+                      maxLength={13}
                     />
                   </div>
 
@@ -231,19 +240,27 @@ const LoginScreen = () => {
                 />
               </div>
 
-              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password">{t.password}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={isSignUp ? "Create a password (min 6 characters)" : "••••••••"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={isSignUp ? "Create a password (min 6 characters)" : "••••••••"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {!isSignUp && (

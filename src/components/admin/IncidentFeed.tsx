@@ -9,7 +9,8 @@ import {
   RefreshCw,
   Eye,
   Filter,
-  Navigation
+  Navigation,
+  Copy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast as sonnerToast } from 'sonner';
 
 interface HazardReport {
   id: string;
@@ -48,7 +50,6 @@ const IncidentFeed = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch initial data
   const fetchReports = async () => {
     setIsLoading(true);
     try {
@@ -77,7 +78,6 @@ const IncidentFeed = () => {
     }
   };
 
-  // Set up real-time subscription
   useEffect(() => {
     fetchReports();
 
@@ -91,8 +91,6 @@ const IncidentFeed = () => {
           table: 'hazard_reports',
         },
         (payload) => {
-          console.log('Real-time update:', payload);
-          
           if (payload.eventType === 'INSERT') {
             const newReport = payload.new as HazardReport;
             if (filter === 'all' || newReport.status === 'pending') {
@@ -105,11 +103,9 @@ const IncidentFeed = () => {
           } else if (payload.eventType === 'UPDATE') {
             const updatedReport = payload.new as HazardReport;
             setReports(prev => {
-              // If filtering by pending and report is no longer pending, remove it
               if (filter === 'pending' && updatedReport.status !== 'pending') {
                 return prev.filter(r => r.id !== updatedReport.id);
               }
-              // Otherwise update the report
               return prev.map(r => r.id === updatedReport.id ? updatedReport : r);
             });
           } else if (payload.eventType === 'DELETE') {
@@ -127,9 +123,6 @@ const IncidentFeed = () => {
   const handleVerify = async (reportId: string) => {
     setProcessingId(reportId);
     try {
-      // Find the report to copy its data into the hazards table
-      const report = reports.find(r => r.id === reportId);
-      
       const { error } = await supabase
         .from('hazard_reports')
         .update({ 
@@ -140,7 +133,6 @@ const IncidentFeed = () => {
 
       if (error) throw error;
 
-      // Invalidate queries to refresh admin stats and maps
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       queryClient.invalidateQueries({ queryKey: ['hazardReports'] });
       queryClient.invalidateQueries({ queryKey: ['hazards'] });
@@ -191,12 +183,29 @@ const IncidentFeed = () => {
     }
   };
 
+  const handleCopyReport = (report: HazardReport) => {
+    const text = [
+      `Hazard Type: ${report.hazard_type}`,
+      `Location: ${report.location}`,
+      report.latitude && report.longitude ? `Coordinates: ${report.latitude.toFixed(6)}, ${report.longitude.toFixed(6)}` : '',
+      report.description ? `Description: ${report.description}` : '',
+      `Status: ${report.status}`,
+      `Reported: ${format(new Date(report.created_at), 'MMM d, yyyy h:mm a')}`,
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(text).then(() => {
+      sonnerToast.success('Report details copied to clipboard');
+    }).catch(() => {
+      sonnerToast.error('Failed to copy');
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
         return <Badge className="bg-yellow-500/20 text-yellow-400 border-0">Pending</Badge>;
       case 'verified':
-        return <Badge className="bg-green-500/20 text-green-400 border-0">Verified</Badge>;
+        return <Badge className="bg-green-500/20 text-green-400 border-0">Approved</Badge>;
       case 'resolved':
         return <Badge className="bg-blue-500/20 text-blue-400 border-0">Resolved</Badge>;
       case 'rejected':
@@ -227,7 +236,6 @@ const IncidentFeed = () => {
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
-            {/* Filter toggle */}
             <Button
               variant="ghost"
               size="sm"
@@ -288,9 +296,22 @@ const IncidentFeed = () => {
                     </div>
                   </div>
                   
-                  {report.status === 'pending' && (
-                    <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse flex-shrink-0" />
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-white/40 hover:text-white hover:bg-command-muted"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyReport(report);
+                      }}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                    {report.status === 'pending' && (
+                      <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse flex-shrink-0" />
+                    )}
+                  </div>
                 </div>
 
                 {/* Location */}
@@ -437,6 +458,17 @@ const IncidentFeed = () => {
                   <span className="font-mono text-slate-300 truncate ml-2 max-w-[180px]">{selectedReport.reporter_id}</span>
                 </div>
               </div>
+
+              {/* Copy Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full border-slate-600 text-slate-300 hover:bg-slate-800"
+                onClick={() => handleCopyReport(selectedReport)}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy Report Details
+              </Button>
 
               {/* Actions for pending */}
               {selectedReport.status === 'pending' && (

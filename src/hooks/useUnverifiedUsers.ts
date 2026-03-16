@@ -22,10 +22,13 @@ export const useVerifyUser = () => {
 
   return useMutation({
     mutationFn: async (userId: string) => {
-      // Use raw update with type assertion for new column
+      // Update both is_verified and verification_status so ID verification is also marked
       const { error } = await supabase
         .from('profiles')
-        .update({ is_verified: true } as never)
+        .update({ 
+          is_verified: true,
+          verification_status: 'verified',
+        } as never)
         .eq('user_id', userId);
 
       if (error) throw error;
@@ -35,6 +38,7 @@ export const useVerifyUser = () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       queryClient.invalidateQueries({ queryKey: ['admin_stats'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['verifications'] });
     }
   });
 };

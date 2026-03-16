@@ -29,6 +29,7 @@ export const useOpenEvacuationCenters = () => {
         .from('evacuation_centers')
         .select('*')
         .in('status', ['open', 'standby'])
+        .neq('status', 'full')
         .order('name', { ascending: true });
 
       if (error) throw error;
