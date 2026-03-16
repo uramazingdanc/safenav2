@@ -178,9 +178,13 @@ const LoginScreen = () => {
                       type="text"
                       placeholder="Enter your full name"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^[a-zA-Z\s.\-']*$/.test(val) && val.length <= 60) setFullName(val);
+                      }}
                       required
                       disabled={isLoading}
+                      maxLength={60}
                     />
                   </div>
 
