@@ -194,11 +194,15 @@ const LoginScreen = () => {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="Enter your phone number"
+                      placeholder="09123456789"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^[0-9+]*$/.test(val) && val.length <= 13) setPhoneNumber(val);
+                      }}
                       required
                       disabled={isLoading}
+                      maxLength={13}
                     />
                   </div>
 
