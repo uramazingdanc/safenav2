@@ -239,19 +239,28 @@ const LoginScreen = () => {
                 />
               </div>
 
-              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password">{t.password}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={isSignUp ? "Create a password (min 6 characters)" : "••••••••"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={isSignUp ? "Create a password (min 6 characters)" : "••••••••"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
               </div>
 
               {!isSignUp && (
