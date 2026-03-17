@@ -45,7 +45,7 @@ const UserProfile = () => {
 
   const displayBarangay = profile?.barangay || user?.user_metadata?.barangay || "";
 
-  const displayEmail = user?.email || profile?.email || "";
+  const displayEmail = user?.email || "";
 
   const handleSignOut = async () => {
     await signOut();
@@ -56,7 +56,7 @@ const UserProfile = () => {
     setFullName(profile?.full_name || user?.user_metadata?.full_name || "");
     setPhoneNumber(profile?.phone_number || user?.user_metadata?.phone_number || "");
     setBarangay(profile?.barangay || user?.user_metadata?.barangay || "");
-    setEmail(user?.email || profile?.email || "");
+    setEmail(user?.email || "");
     setIsEditOpen(true);
   };
 
