@@ -306,6 +306,8 @@ const SafetyMap = () => {
               name: feature.get('name'),
               status: feature.get('status'),
               location: feature.get('location'),
+              capacity: feature.get('capacity'),
+              current_occupancy: feature.get('current_occupancy'),
             },
             position: coordinates,
           });
