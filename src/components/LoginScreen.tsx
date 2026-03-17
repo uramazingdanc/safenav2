@@ -183,7 +183,6 @@ const LoginScreen = () => {
           full_name: fullName.trim(),
           phone_number: phoneNumber.trim(),
           barangay: barangay,
-          email: email.trim(),
         });
 
         if (error) {

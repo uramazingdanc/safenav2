@@ -56,7 +56,7 @@ const UserProfile = () => {
     setFullName(profile?.full_name || user?.user_metadata?.full_name || "");
     setPhoneNumber(profile?.phone_number || user?.user_metadata?.phone_number || "");
     setBarangay(profile?.barangay || user?.user_metadata?.barangay || "");
-    setEmail(user?.email || profile?.email || "");
+    setEmail(user?.email || "");
     setIsEditOpen(true);
   };
 
