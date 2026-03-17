@@ -34,9 +34,9 @@ export const useNotifications = () => {
       if (!user) return [];
 
       // 🔹 Check if admin (based on profiles table)
-      const { data: profile } = await supabase.from("profiles").select("role").eq("user_id", user.id).single();
+      const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
 
-      const isAdmin = profile?.role === "admin" || profile?.role === "moderator";
+      const isAdmin = userRole?.role === "admin" || userRole?.role === "moderator";
 
       let queryBuilder = supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(50);
 
