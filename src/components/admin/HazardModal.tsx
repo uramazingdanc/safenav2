@@ -125,8 +125,10 @@ const HazardModal = ({ open, onClose, initialCoords }: HazardModalProps) => {
       // Upload photo to storage first
       let photoUrl: string | null = null;
       if (photoFile) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
         const ext = photoFile.name.split('.').pop();
-        const fileName = `admin/${Date.now()}_hazard.${ext}`;
+        const fileName = `${user.id}/${Date.now()}_hazard.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from('hazard_photos')
           .upload(fileName, photoFile, { upsert: true });
