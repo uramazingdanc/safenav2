@@ -383,6 +383,8 @@ const SafetyMap = () => {
           name: center.name,
           status: center.status,
           location: center.location,
+          capacity: center.capacity,
+          current_occupancy: center.current_occupancy,
           featureType: 'evac',
         });
         feature.setStyle(evacStyle);
