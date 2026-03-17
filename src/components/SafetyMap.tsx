@@ -794,13 +794,25 @@ const SafetyMap = () => {
                   )}
                 </>
               ) : popupContent.type === 'evac' && popupContent.data ? (
-                <>
-                  <span className="text-2xl">🏠</span>
-                  <br />
-                  <strong className="text-green-600">{popupContent.data.name}</strong>
-                  <p className="text-xs">Status: {popupContent.data.status}</p>
-                  <p className="text-xs">{popupContent.data.location}</p>
-                </>
+                (() => {
+                  const cap = popupContent.data.capacity || 0;
+                  const occ = popupContent.data.current_occupancy || 0;
+                  const pct = cap > 0 ? Math.min((occ / cap) * 100, 100) : 0;
+                  const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#10b981';
+                  return (
+                    <div style={{ textAlign: 'center', minWidth: '160px' }}>
+                      <span style={{ fontSize: '1.5rem' }}>🏠</span>
+                      <br />
+                      <strong style={{ color: '#16a34a' }}>{popupContent.data.name}</strong>
+                      <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>{popupContent.data.location}</p>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 500, marginTop: '4px' }}>Occupancy: {occ} / {cap}</p>
+                      <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '9999px', overflow: 'hidden', marginTop: '4px', marginLeft: 'auto', marginRight: 'auto', maxWidth: '80%' }}>
+                        <div style={{ height: '100%', borderRadius: '9999px', width: `${pct}%`, backgroundColor: barColor, transition: 'all 0.3s' }} />
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>Status: {popupContent.data.status?.charAt(0).toUpperCase() + popupContent.data.status?.slice(1)}</p>
+                    </div>
+                  );
+                })()
               ) : popupContent.type === 'user' ? (
                 <>
                   <span className="text-xl">📍</span>
