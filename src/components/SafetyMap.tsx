@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveHazards } from '@/hooks/useHazards';
-import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
+import { useRealtimeEvacuationCenters } from '@/hooks/useRealtimeEvacuationCenters';
 import WeatherCard from '@/components/WeatherCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
