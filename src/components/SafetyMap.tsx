@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveHazards } from '@/hooks/useHazards';
-import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
+import { useRealtimeEvacuationCenters } from '@/hooks/useRealtimeEvacuationCenters';
 import WeatherCard from '@/components/WeatherCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
@@ -153,7 +153,8 @@ const SafetyMap = () => {
 
   // Fetch real data from database
   const { data: hazards = [], isLoading: hazardsLoading } = useActiveHazards();
-  const { data: evacCenters = [], isLoading: evacLoading } = useOpenEvacuationCenters();
+  const { data: allEvacCenters = [], isLoading: evacLoading } = useRealtimeEvacuationCenters();
+  const evacCenters = allEvacCenters.filter(c => c.status !== 'full');
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
@@ -305,6 +306,8 @@ const SafetyMap = () => {
               name: feature.get('name'),
               status: feature.get('status'),
               location: feature.get('location'),
+              capacity: feature.get('capacity'),
+              current_occupancy: feature.get('current_occupancy'),
             },
             position: coordinates,
           });
@@ -382,6 +385,8 @@ const SafetyMap = () => {
           name: center.name,
           status: center.status,
           location: center.location,
+          capacity: center.capacity,
+          current_occupancy: center.current_occupancy,
           featureType: 'evac',
         });
         feature.setStyle(evacStyle);
