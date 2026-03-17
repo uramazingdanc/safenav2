@@ -1,32 +1,14 @@
-import { useState, useEffect } from 'react';
-import { 
-  AlertTriangle, 
-  Check, 
-  X, 
-  MapPin, 
-  Clock, 
-  Loader2,
-  RefreshCw,
-  Eye,
-  Filter,
-  Navigation,
-  Copy
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
-import { formatDistanceToNow, format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { toast as sonnerToast } from 'sonner';
+import { useState, useEffect } from "react";
+import { AlertTriangle, Check, X, MapPin, Clock, Loader2, RefreshCw, Filter, Navigation, Copy } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow, format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface HazardReport {
   id: string;
@@ -35,7 +17,7 @@ interface HazardReport {
   location: string;
   latitude: number | null;
   longitude: number | null;
-  status: 'pending' | 'verified' | 'resolved' | 'rejected';
+  status: "pending" | "verified" | "resolved" | "rejected";
   photo_url: string | null;
   created_at: string;
   reporter_id: string;
@@ -45,7 +27,7 @@ const IncidentFeed = () => {
   const [reports, setReports] = useState<HazardReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending'>('pending');
+  const [filter, setFilter] = useState<"all" | "pending">("pending");
   const [selectedReport, setSelectedReport] = useState<HazardReport | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -53,13 +35,10 @@ const IncidentFeed = () => {
   const fetchReports = async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from('hazard_reports')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from("hazard_reports").select("*").order("created_at", { ascending: false });
 
-      if (filter === 'pending') {
-        query = query.eq('status', 'pending');
+      if (filter === "pending") {
+        query = query.eq("status", "pending");
       }
 
       const { data, error } = await query.limit(50);
@@ -67,11 +46,11 @@ const IncidentFeed = () => {
       if (error) throw error;
       setReports(data || []);
     } catch (error) {
-      console.error('Error fetching reports:', error);
+      console.error("Error fetching reports:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch incident reports.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to fetch incident reports.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -82,36 +61,41 @@ const IncidentFeed = () => {
     fetchReports();
 
     const channel = supabase
-      .channel('hazard_reports_realtime')
+      .channel("hazard_reports_realtime")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'hazard_reports',
+          event: "*",
+          schema: "public",
+          table: "hazard_reports",
         },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
+          console.log("Real-time update:", payload);
+
+          if (payload.eventType === "INSERT") {
             const newReport = payload.new as HazardReport;
-            if (filter === 'all' || newReport.status === 'pending') {
-              setReports(prev => [newReport, ...prev]);
+            if (filter === "all" || newReport.status === "pending") {
+              setReports((prev) => [newReport, ...prev]);
               toast({
-                title: '🚨 New Incident Report',
+                title: "🚨 New Incident Report",
                 description: `${newReport.hazard_type} reported at ${newReport.location}`,
               });
             }
-          } else if (payload.eventType === 'UPDATE') {
+          } else if (payload.eventType === "UPDATE") {
             const updatedReport = payload.new as HazardReport;
-            setReports(prev => {
-              if (filter === 'pending' && updatedReport.status !== 'pending') {
-                return prev.filter(r => r.id !== updatedReport.id);
+            setReports((prev) => {
+              if (filter === "pending" && updatedReport.status !== "pending") {
+                return prev.filter((r) => r.id !== updatedReport.id);
               }
-              return prev.map(r => r.id === updatedReport.id ? updatedReport : r);
+              return prev.map((r) => (r.id === updatedReport.id ? updatedReport : r));
             });
-          } else if (payload.eventType === 'DELETE') {
-            setReports(prev => prev.filter(r => r.id !== payload.old.id));
+
+            setSelectedReport((prev) => (prev?.id === updatedReport.id ? updatedReport : prev));
+          } else if (payload.eventType === "DELETE") {
+            setReports((prev) => prev.filter((r) => r.id !== payload.old.id));
+            setSelectedReport((prev) => (prev?.id === payload.old.id ? null : prev));
           }
-        }
+        },
       )
       .subscribe();
 
@@ -120,32 +104,65 @@ const IncidentFeed = () => {
     };
   }, [filter]);
 
+  const copyHazardDetails = async (report: HazardReport) => {
+    const hazardDetails = [
+      `Hazard Type: ${report.hazard_type || "N/A"}`,
+      `Location: ${report.location || "N/A"}`,
+      `Description: ${report.description || "N/A"}`,
+      `Status: ${report.status || "N/A"}`,
+      `Reported At: ${format(new Date(report.created_at), "MMM d, yyyy h:mm a")}`,
+      `Reporter ID: ${report.reporter_id || "N/A"}`,
+      `Latitude: ${report.latitude ?? "N/A"}`,
+      `Longitude: ${report.longitude ?? "N/A"}`,
+      report.latitude !== null && report.longitude !== null
+        ? `Google Maps: https://www.google.com/maps?q=${report.latitude},${report.longitude}`
+        : null,
+      `Photo URL: ${report.photo_url || "N/A"}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      await navigator.clipboard.writeText(hazardDetails);
+      toast({
+        title: "Copied",
+        description: "Hazard report details copied to clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy hazard report details.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleVerify = async (reportId: string) => {
     setProcessingId(reportId);
     try {
       const { error } = await supabase
-        .from('hazard_reports')
-        .update({ 
-          status: 'verified',
-          reviewed_at: new Date().toISOString()
+        .from("hazard_reports")
+        .update({
+          status: "verified",
+          reviewed_at: new Date().toISOString(),
         })
-        .eq('id', reportId);
+        .eq("id", reportId);
 
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
-      queryClient.invalidateQueries({ queryKey: ['hazardReports'] });
-      queryClient.invalidateQueries({ queryKey: ['hazards'] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ["hazardReports"] });
+      queryClient.invalidateQueries({ queryKey: ["hazards"] });
 
       toast({
-        title: '✓ Report Approved',
-        description: 'The hazard report has been approved.',
+        title: "✓ Report Approved",
+        description: "The hazard report has been approved.",
       });
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to verify report. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to verify report. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setProcessingId(null);
@@ -156,353 +173,323 @@ const IncidentFeed = () => {
     setProcessingId(reportId);
     try {
       const { error } = await supabase
-        .from('hazard_reports')
-        .update({ 
-          status: 'rejected',
-          reviewed_at: new Date().toISOString()
+        .from("hazard_reports")
+        .update({
+          status: "rejected",
+          reviewed_at: new Date().toISOString(),
         })
-        .eq('id', reportId);
+        .eq("id", reportId);
 
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
-      queryClient.invalidateQueries({ queryKey: ['hazardReports'] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ["hazardReports"] });
 
       toast({
-        title: 'Report Rejected',
-        description: 'The hazard report has been rejected.',
+        title: "Report Rejected",
+        description: "The hazard report has been rejected.",
       });
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to reject report. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to reject report. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleCopyReport = (report: HazardReport) => {
-    const text = [
-      `Hazard Type: ${report.hazard_type}`,
-      `Location: ${report.location}`,
-      report.latitude && report.longitude ? `Coordinates: ${report.latitude.toFixed(6)}, ${report.longitude.toFixed(6)}` : '',
-      report.description ? `Description: ${report.description}` : '',
-      `Status: ${report.status}`,
-      `Reported: ${format(new Date(report.created_at), 'MMM d, yyyy h:mm a')}`,
-    ].filter(Boolean).join('\n');
-
-    navigator.clipboard.writeText(text).then(() => {
-      sonnerToast.success('Report details copied to clipboard');
-    }).catch(() => {
-      sonnerToast.error('Failed to copy');
-    });
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
+      case "pending":
         return <Badge className="bg-yellow-500/20 text-yellow-400 border-0">Pending</Badge>;
-      case 'verified':
-        return <Badge className="bg-green-500/20 text-green-400 border-0">Approved</Badge>;
-      case 'resolved':
+      case "verified":
+        return <Badge className="bg-green-500/20 text-green-400 border-0">Verified</Badge>;
+      case "resolved":
         return <Badge className="bg-blue-500/20 text-blue-400 border-0">Resolved</Badge>;
-      case 'rejected':
+      case "rejected":
         return <Badge className="bg-red-500/20 text-red-400 border-0">Rejected</Badge>;
       default:
         return null;
     }
   };
 
-  const getHazardIcon = (type: string) => {
+  const getHazardIcon = (_type: string) => {
     return <AlertTriangle className="w-4 h-4" />;
   };
 
   return (
     <>
-    <Card className="bg-command-muted/30 border-command-muted">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2 text-white">
-            <div className="p-2 bg-orange-500/20 rounded-lg">
-              <AlertTriangle className="w-4 h-4 text-orange-400" />
-            </div>
-            Incident Feed
-            {reports.length > 0 && filter === 'pending' && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 animate-pulse">
-                {reports.length} pending
-              </span>
-            )}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setFilter(f => f === 'pending' ? 'all' : 'pending')}
-              className="text-white/60 hover:text-white hover:bg-command-muted text-xs"
-            >
-              <Filter className="w-3 h-3 mr-1" />
-              {filter === 'pending' ? 'Pending' : 'All'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={fetchReports}
-              disabled={isLoading}
-              className="text-white/60 hover:text-white hover:bg-command-muted h-8 w-8"
-            >
-              <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="max-h-[500px] overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-ocean" />
-          </div>
-        ) : reports.length > 0 ? (
-          <div className="space-y-3">
-            {reports.map((report) => (
-              <div
-                key={report.id}
-                className={cn(
-                  "p-4 bg-command rounded-xl border transition-all duration-200 cursor-pointer",
-                  report.status === 'pending' 
-                    ? "border-yellow-500/30 hover:border-yellow-500/50" 
-                    : "border-command-muted hover:border-command-muted/80"
-                )}
-                onClick={() => setSelectedReport(report)}
+      <Card className="bg-command-muted/30 border-command-muted">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2 text-white">
+              <div className="p-2 bg-orange-500/20 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-orange-400" />
+              </div>
+              Incident Feed
+              {reports.length > 0 && filter === "pending" && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 animate-pulse">
+                  {reports.length} pending
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilter((f) => (f === "pending" ? "all" : "pending"))}
+                className="text-white/60 hover:text-white hover:bg-command-muted text-xs"
               >
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "p-2 rounded-lg",
-                      report.status === 'pending' ? "bg-yellow-500/20" : "bg-command-muted"
-                    )}>
-                      {getHazardIcon(report.hazard_type)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-white text-sm">{report.hazard_type}</span>
-                        {getStatusBadge(report.status)}
+                <Filter className="w-3 h-3 mr-1" />
+                {filter === "pending" ? "Pending" : "All"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={fetchReports}
+                disabled={isLoading}
+                className="text-white/60 hover:text-white hover:bg-command-muted h-8 w-8"
+              >
+                <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="max-h-[500px] overflow-y-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-ocean" />
+            </div>
+          ) : reports.length > 0 ? (
+            <div className="space-y-3">
+              {reports.map((report) => (
+                <div
+                  key={report.id}
+                  className={cn(
+                    "p-4 bg-command rounded-xl border transition-all duration-200 cursor-pointer",
+                    report.status === "pending"
+                      ? "border-yellow-500/30 hover:border-yellow-500/50"
+                      : "border-command-muted hover:border-command-muted/80",
+                  )}
+                  onClick={() => setSelectedReport(report)}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "p-2 rounded-lg",
+                          report.status === "pending" ? "bg-yellow-500/20" : "bg-command-muted",
+                        )}
+                      >
+                        {getHazardIcon(report.hazard_type)}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-white/50 mt-0.5">
-                        <Clock className="w-3 h-3" />
-                        {formatDistanceToNow(new Date(report.created_at), { addSuffix: true })}
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-white text-sm">{report.hazard_type}</span>
+                          {getStatusBadge(report.status)}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-white/50 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          {formatDistanceToNow(new Date(report.created_at), { addSuffix: true })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-white/40 hover:text-white hover:bg-command-muted"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyReport(report);
-                      }}
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                    {report.status === 'pending' && (
+
+                    {report.status === "pending" && (
                       <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse flex-shrink-0" />
                     )}
                   </div>
+
+                  <div className="flex items-center gap-2 text-sm text-white/70 mb-2">
+                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{report.location}</span>
+                  </div>
+
+                  {report.description && (
+                    <p className="text-xs text-white/60 mb-3 line-clamp-2">{report.description}</p>
+                  )}
+
+                  {report.photo_url && (
+                    <div className="mb-3">
+                      <img src={report.photo_url} alt="Incident" className="w-full h-32 object-cover rounded-lg" />
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-command-muted" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 bg-command-muted/50 hover:bg-command-muted text-white border-command-muted h-9"
+                        onClick={() => copyHazardDetails(report)}
+                      >
+                        <Copy className="w-4 h-4 mr-1" />
+                        Copy
+                      </Button>
+
+                      {report.status === "pending" && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white h-9"
+                            onClick={() => handleVerify(report.id)}
+                            disabled={processingId === report.id}
+                          >
+                            {processingId === report.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Check className="w-4 h-4 mr-1" />
+                                Approve
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white h-9"
+                            onClick={() => handleReject(report.id)}
+                            disabled={processingId === report.id}
+                          >
+                            {processingId === report.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <X className="w-4 h-4 mr-1" />
+                                Reject
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-white/50">
+              <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No {filter === "pending" ? "pending " : ""}incident reports</p>
+              <p className="text-xs mt-1 text-white/30">New reports will appear here in real-time</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md max-h-[90vh] overflow-y-auto">
+          {selectedReport && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-white">
+                  <AlertTriangle className="w-5 h-5 text-orange-400" />
+                  {selectedReport.hazard_type}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-400">Status:</span>
+                    {getStatusBadge(selectedReport.status)}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="bg-slate-800 hover:bg-slate-700 border-slate-600 text-white"
+                    onClick={() => copyHazardDetails(selectedReport)}
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy
+                  </Button>
                 </div>
 
-                {/* Location */}
-                <div className="flex items-center gap-2 text-sm text-white/70 mb-2">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate">{report.location}</span>
+                <div>
+                  <span className="text-sm text-slate-400">Location</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm">{selectedReport.location}</span>
+                  </div>
                 </div>
 
-                {/* Description */}
-                {report.description && (
-                  <p className="text-xs text-white/60 mb-3 line-clamp-2">
-                    {report.description}
-                  </p>
+                {selectedReport.latitude !== null && selectedReport.longitude !== null && (
+                  <div>
+                    <span className="text-sm text-slate-400">Coordinates</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Navigation className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-mono">
+                        {selectedReport.latitude.toFixed(6)}, {selectedReport.longitude.toFixed(6)}
+                      </span>
+                    </div>
+                  </div>
                 )}
 
-                {/* Photo preview */}
-                {report.photo_url && (
-                  <div className="mb-3">
-                    <img 
-                      src={report.photo_url} 
-                      alt="Incident" 
-                      className="w-full h-32 object-cover rounded-lg"
+                {selectedReport.description && (
+                  <div>
+                    <span className="text-sm text-slate-400">Description</span>
+                    <p className="text-sm mt-1">{selectedReport.description}</p>
+                  </div>
+                )}
+
+                {selectedReport.photo_url && (
+                  <div>
+                    <span className="text-sm text-slate-400">Photo Evidence</span>
+                    <img
+                      src={selectedReport.photo_url}
+                      alt="Incident"
+                      className="w-full rounded-lg mt-1 max-h-64 object-contain bg-black/20"
                     />
                   </div>
                 )}
 
-                {/* Actions - Only show for pending reports */}
-                {report.status === 'pending' && (
-                  <div className="flex gap-2 pt-2 border-t border-command-muted" onClick={(e) => e.stopPropagation()}>
-                    <Button 
-                      size="sm" 
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white h-9"
-                      onClick={() => handleVerify(report.id)}
-                      disabled={processingId === report.id}
+                <div className="space-y-1 pt-2 border-t border-slate-700">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Reported</span>
+                    <span>{format(new Date(selectedReport.created_at), "MMM d, yyyy h:mm a")}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Reporter ID</span>
+                    <span className="font-mono text-slate-300 truncate ml-2 max-w-[180px]">
+                      {selectedReport.reporter_id}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedReport.status === "pending" && (
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => {
+                        handleVerify(selectedReport.id);
+                        setSelectedReport(null);
+                      }}
                     >
-                      {processingId === report.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4 mr-1" />
-                          Approve
-                        </>
-                      )}
+                      <Check className="w-4 h-4 mr-1" />
+                      Approve
                     </Button>
-                    <Button 
-                      size="sm" 
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white h-9"
-                      onClick={() => handleReject(report.id)}
-                      disabled={processingId === report.id}
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => {
+                        handleReject(selectedReport.id);
+                        setSelectedReport(null);
+                      }}
                     >
-                      {processingId === report.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <X className="w-4 h-4 mr-1" />
-                          Reject
-                        </>
-                      )}
+                      <X className="w-4 h-4 mr-1" />
+                      Reject
                     </Button>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-white/50">
-            <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No {filter === 'pending' ? 'pending ' : ''}incident reports</p>
-            <p className="text-xs mt-1 text-white/30">New reports will appear here in real-time</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-
-    {/* Report Detail Dialog */}
-    <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-      <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-md max-h-[90vh] overflow-y-auto">
-        {selectedReport && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-white">
-                <AlertTriangle className="w-5 h-5 text-orange-400" />
-                {selectedReport.hazard_type}
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              {/* Status */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-400">Status:</span>
-                {getStatusBadge(selectedReport.status)}
-              </div>
-
-              {/* Location */}
-              <div>
-                <span className="text-sm text-slate-400">Location</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm">{selectedReport.location}</span>
-                </div>
-              </div>
-
-              {/* Coordinates */}
-              {(selectedReport.latitude && selectedReport.longitude) && (
-                <div>
-                  <span className="text-sm text-slate-400">Coordinates</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Navigation className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-mono">
-                      {selectedReport.latitude.toFixed(6)}, {selectedReport.longitude.toFixed(6)}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Description */}
-              {selectedReport.description && (
-                <div>
-                  <span className="text-sm text-slate-400">Description</span>
-                  <p className="text-sm mt-1">{selectedReport.description}</p>
-                </div>
-              )}
-
-              {/* Photo */}
-              {selectedReport.photo_url && (
-                <div>
-                  <span className="text-sm text-slate-400">Photo Evidence</span>
-                  <img 
-                    src={selectedReport.photo_url} 
-                    alt="Incident" 
-                    className="w-full rounded-lg mt-1 max-h-64 object-contain bg-black/20"
-                  />
-                </div>
-              )}
-
-              {/* Timestamps */}
-              <div className="space-y-1 pt-2 border-t border-slate-700">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">Reported</span>
-                  <span>{format(new Date(selectedReport.created_at), 'MMM d, yyyy h:mm a')}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">Reporter ID</span>
-                  <span className="font-mono text-slate-300 truncate ml-2 max-w-[180px]">{selectedReport.reporter_id}</span>
-                </div>
-              </div>
-
-              {/* Copy Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full border-slate-600 text-slate-300 hover:bg-slate-800"
-                onClick={() => handleCopyReport(selectedReport)}
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Report Details
-              </Button>
-
-              {/* Actions for pending */}
-              {selectedReport.status === 'pending' && (
-                <div className="flex gap-2 pt-2">
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => {
-                      handleVerify(selectedReport.id);
-                      setSelectedReport(null);
-                    }}
-                  >
-                    <Check className="w-4 h-4 mr-1" />
-                    Approve
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => {
-                      handleReject(selectedReport.id);
-                      setSelectedReport(null);
-                    }}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    Reject
-                  </Button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  </>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

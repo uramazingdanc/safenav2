@@ -1,12 +1,7 @@
-import { HelpCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { HelpCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const HelpPage = () => {
   const { t } = useLanguage();
@@ -38,11 +33,7 @@ const HelpPage = () => {
         <Card className="overflow-hidden">
           <CardContent className="p-0">
             <div className="aspect-video bg-muted flex items-center justify-center relative">
-              <video 
-                className="w-full h-full object-cover"
-                controls
-                poster="/placeholder.svg"
-              >
+              <video className="w-full h-full object-cover" controls poster="/placeholder.svg">
                 <source src="/videos/user-guide.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>

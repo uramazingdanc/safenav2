@@ -1,31 +1,30 @@
-import { useState } from 'react';
-import { LogOut, Loader2, MapPin, Phone as PhoneIcon, Map, Phone, AlertTriangle, Shield, Eye, EyeOff, Mail } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProfile, useUpdateProfile } from '@/hooks/useProfiles';
-import { NAVAL_BARANGAYS } from '@/constants/barangays';
-import { toast } from 'sonner';
-import ProfileVerification from '@/components/ProfileVerification';
+import { useState } from "react";
+import { LogOut, Loader2, MapPin, Phone as PhoneIcon, Map, Phone, AlertTriangle, Shield, Mail } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile, useUpdateProfile } from "@/hooks/useProfiles";
+import { NAVAL_BARANGAYS } from "@/constants/barangays";
+import { toast } from "sonner";
+import ProfileVerification from "@/components/ProfileVerification";
+
+const FULL_NAME_REGEX = /^[A-Za-z]+(?:[ A-Za-z]+)*$/;
+const PHONE_REGEX = /^09\d{9}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const sanitizeFullName = (value: string) =>
+  value
+    .replace(/[^A-Za-z\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trimStart();
+
+const sanitizePhoneNumber = (value: string) => value.replace(/\D/g, "").slice(0, 11);
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -33,82 +32,91 @@ const UserProfile = () => {
   const { user, signOut } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
-  
+
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [barangay, setBarangay] = useState('');
-  const [showEmail, setShowEmail] = useState(false);
-  const [showPhone, setShowPhone] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [barangay, setBarangay] = useState("");
+  const [email, setEmail] = useState("");
+
+  const displayFullName = profile?.full_name || user?.user_metadata?.full_name || "User";
+
+  const displayPhoneNumber = profile?.phone_number || user?.user_metadata?.phone_number || "";
+
+  const displayBarangay = profile?.barangay || user?.user_metadata?.barangay || "";
+
+  const displayEmail = user?.email || profile?.email || "";
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    navigate("/");
   };
 
   const handleEditOpen = () => {
-    setFullName(profile?.full_name || '');
-    setPhoneNumber(profile?.phone_number || '');
-    setBarangay(profile?.barangay || '');
+    setFullName(profile?.full_name || user?.user_metadata?.full_name || "");
+    setPhoneNumber(profile?.phone_number || user?.user_metadata?.phone_number || "");
+    setBarangay(profile?.barangay || user?.user_metadata?.barangay || "");
+    setEmail(user?.email || profile?.email || "");
     setIsEditOpen(true);
   };
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Only allow letters, spaces, dots, hyphens (no numbers/special chars)
-    if (/^[a-zA-Z\s.\-']*$/.test(value) && value.length <= 60) {
-      setFullName(value);
-    }
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Only allow digits and + sign, max 13 chars (e.g. +639123456789)
-    if (/^[0-9+]*$/.test(value) && value.length <= 13) {
-      setPhoneNumber(value);
-    }
-  };
-
   const handleSaveProfile = async () => {
-    if (!fullName.trim()) {
-      toast.error('Full name is required');
+    const trimmedFullName = fullName.trim();
+    const trimmedPhoneNumber = phoneNumber.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedFullName) {
+      toast.error("Full name is required");
       return;
     }
-    if (phoneNumber && !/^(09\d{9}|(\+63)\d{10})$/.test(phoneNumber)) {
-      toast.error('Please enter a valid Philippine phone number (e.g. 09123456789)');
+
+    if (!FULL_NAME_REGEX.test(trimmedFullName)) {
+      toast.error("Full name must contain letters and spaces only");
       return;
     }
+
+    if (!trimmedPhoneNumber) {
+      toast.error("Phone number is required");
+      return;
+    }
+
+    if (!PHONE_REGEX.test(trimmedPhoneNumber)) {
+      toast.error("Phone number must start with 09 and contain exactly 11 digits");
+      return;
+    }
+
+    if (!trimmedEmail) {
+      toast.error("Email is required");
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      toast.error("Email must be in a valid format like name@name.com");
+      return;
+    }
+
     try {
       await updateProfile.mutateAsync({
-        full_name: fullName.trim(),
-        phone_number: phoneNumber || null,
+        full_name: trimmedFullName,
+        phone_number: trimmedPhoneNumber,
         barangay: barangay || null,
       });
-      toast.success('Profile updated successfully');
+
+      toast.success("Profile updated successfully");
       setIsEditOpen(false);
     } catch (error) {
-      toast.error('Failed to update profile');
+      toast.error("Failed to update profile");
     }
   };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  const maskEmail = (email: string) => {
-    const [local, domain] = email.split('@');
-    if (local.length <= 2) return `${local[0]}***@${domain}`;
-    return `${local[0]}${local[1]}${'*'.repeat(Math.min(local.length - 2, 6))}@${domain}`;
-  };
-
-  const maskPhone = (phone: string) => {
-    if (phone.length <= 4) return '****';
-    return phone.slice(0, 4) + '*'.repeat(phone.length - 7) + phone.slice(-3);
   };
 
   if (isLoading) {
@@ -119,73 +127,78 @@ const UserProfile = () => {
     );
   }
 
-  // Get verification status from profile
-  const verificationStatus = (profile as any)?.verification_status || 'unverified';
+  const verificationStatus = (profile as any)?.verification_status || "unverified";
   const adminNotes = (profile as any)?.admin_notes;
-  const isVerified = verificationStatus === 'verified';
+  const isVerified = verificationStatus === "verified";
 
   return (
     <div className="min-h-screen bg-secondary/30 pb-20">
-      {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 pb-6">
         <h1 className="text-xl font-bold">{t.profileTitle}</h1>
         <p className="text-sm text-primary-foreground/80">{t.manageAccount}</p>
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Profile Card */}
         <Card className="border-border">
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center text-lg font-bold">
-                  {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+                  {displayFullName ? getInitials(displayFullName) : "U"}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">{profile?.full_name || 'User'}</h2>
-                  {/* Email with eye toggle */}
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Mail className="w-3 h-3" />
-                    <span>{showEmail ? user?.email : maskEmail(user?.email || '')}</span>
-                    <button onClick={() => setShowEmail(!showEmail)} className="p-0.5 hover:text-foreground">
-                      {showEmail ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    </button>
-                  </div>
+                  <h2 className="text-lg font-bold text-foreground">{displayFullName}</h2>
+                  <p className="text-sm text-muted-foreground">{displayEmail}</p>
                 </div>
               </div>
+
               <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" onClick={handleEditOpen}>
                     {t.edit}
                   </Button>
                 </DialogTrigger>
+
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>{t.editProfile}</DialogTitle>
                   </DialogHeader>
+
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="fullName">{t.fullName}</Label>
                       <Input
                         id="fullName"
                         value={fullName}
-                        onChange={handleNameChange}
+                        onChange={(e) => setFullName(sanitizeFullName(e.target.value))}
                         placeholder={t.enterFullName}
-                        maxLength={60}
                       />
-                      <p className="text-xs text-muted-foreground">Letters only, max 60 characters</p>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">{t.email}</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value.trim())}
+                        placeholder="name@name.com"
+                        disabled
+                      />
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="phone">{t.phoneNumber}</Label>
                       <Input
                         id="phone"
                         value={phoneNumber}
-                        onChange={handlePhoneChange}
-                        placeholder="09123456789"
-                        maxLength={13}
+                        onChange={(e) => setPhoneNumber(sanitizePhoneNumber(e.target.value))}
+                        placeholder="09XXXXXXXXX"
+                        inputMode="numeric"
+                        maxLength={11}
                       />
-                      <p className="text-xs text-muted-foreground">Philippine format: 09XXXXXXXXX</p>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="barangay">{t.barangay}</Label>
                       <Select value={barangay} onValueChange={setBarangay}>
@@ -202,14 +215,13 @@ const UserProfile = () => {
                       </Select>
                     </div>
                   </div>
+
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setIsEditOpen(false)}>
                       {t.cancel}
                     </Button>
                     <Button onClick={handleSaveProfile} disabled={updateProfile.isPending}>
-                      {updateProfile.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : null}
+                      {updateProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                       {t.saveChanges}
                     </Button>
                   </div>
@@ -217,34 +229,33 @@ const UserProfile = () => {
               </Dialog>
             </div>
 
-            {/* Contact Details */}
             <div className="space-y-2 text-sm">
-              {profile?.barangay && (
+              {displayEmail && (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>Barangay {profile.barangay}</span>
+                  <Mail className="w-4 h-4" />
+                  <span>{displayEmail}</span>
                 </div>
               )}
-              {profile?.phone_number && (
+
+              {displayBarangay && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>Barangay {displayBarangay}</span>
+                </div>
+              )}
+
+              {displayPhoneNumber && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <PhoneIcon className="w-4 h-4" />
-                  <span>{showPhone ? profile.phone_number : maskPhone(profile.phone_number)}</span>
-                  <button onClick={() => setShowPhone(!showPhone)} className="p-0.5 hover:text-foreground">
-                    {showPhone ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  </button>
+                  <span>{displayPhoneNumber}</span>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Verification Status Section */}
-        <ProfileVerification 
-          verificationStatus={verificationStatus}
-          adminNotes={adminNotes}
-        />
+        <ProfileVerification verificationStatus={verificationStatus} adminNotes={adminNotes} />
 
-        {/* Report Hazard Button - Only for verified users */}
         <Card className="border-border">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -253,17 +264,13 @@ const UserProfile = () => {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold">{t.reportAHazard}</h3>
-                <p className="text-xs text-muted-foreground">
-                  {isVerified 
-                    ? t.reportHazardDesc
-                    : t.mustBeVerified}
-                </p>
+                <p className="text-xs text-muted-foreground">{isVerified ? t.reportHazardDesc : t.mustBeVerified}</p>
               </div>
             </div>
-            <Button 
-              className="w-full mt-3" 
-              variant={isVerified ? 'default' : 'outline'}
-              onClick={() => isVerified && navigate('/report')}
+            <Button
+              className="w-full mt-3"
+              variant={isVerified ? "default" : "outline"}
+              onClick={() => isVerified && navigate("/report")}
               disabled={!isVerified}
             >
               {isVerified ? (
@@ -281,19 +288,18 @@ const UserProfile = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Links */}
         <Card className="border-border">
           <CardContent className="p-0">
             <div
               className="flex items-center justify-center gap-2 p-4 cursor-pointer hover:bg-secondary/50 border-b border-border"
-              onClick={() => navigate('/map')}
+              onClick={() => navigate("/map")}
             >
               <Map className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">{t.viewSafetyMap}</span>
             </div>
             <div
               className="flex items-center justify-center gap-2 p-4 cursor-pointer hover:bg-secondary/50"
-              onClick={() => navigate('/hotlines')}
+              onClick={() => navigate("/hotlines")}
             >
               <Phone className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">{t.emergencyHotlines}</span>
@@ -301,12 +307,7 @@ const UserProfile = () => {
           </CardContent>
         </Card>
 
-        {/* Sign Out */}
-        <Button
-          variant="destructive"
-          className="w-full"
-          onClick={handleSignOut}
-        >
+        <Button variant="destructive" className="w-full" onClick={handleSignOut}>
           <LogOut className="w-4 h-4 mr-2" />
           {t.signOutLabel}
         </Button>

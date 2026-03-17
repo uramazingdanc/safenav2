@@ -1,17 +1,15 @@
-import { useState, useEffect } from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useCreateEvacCenter, useUpdateEvacCenter } from '@/hooks/useRealtimeEvacuationCenters';
-import { toast } from 'sonner';
-import type { Tables } from '@/integrations/supabase/types';
-import MapLocationPicker from '@/components/MapLocationPicker';
+import { useState, useEffect } from "react";
+import { MapPin, Loader2, Users, Building2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useCreateEvacCenter, useUpdateEvacCenter } from "@/hooks/useRealtimeEvacuationCenters";
+import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
+import MapLocationPicker from "@/components/MapLocationPicker";
 
-type EvacuationCenter = Tables<'evacuation_centers'>;
+type EvacuationCenter = Tables<"evacuation_centers">;
 
 interface EvacCenterModalProps {
   open: boolean;
@@ -20,220 +18,237 @@ interface EvacCenterModalProps {
   initialCoords?: { lat: number; lng: number } | null;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'open', label: 'Open' },
-  { value: 'standby', label: 'Standby' },
-  { value: 'full', label: 'Full' },
-  { value: 'closed', label: 'Closed' },
-];
-
 const EvacCenterModal = ({ open, onClose, editCenter, initialCoords }: EvacCenterModalProps) => {
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [currentOccupancy, setCurrentOccupancy] = useState("");
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
-  const [capacity, setCapacity] = useState('100');
-  const [currentOccupancy, setCurrentOccupancy] = useState('0');
-  const [status, setStatus] = useState('open');
 
   const createCenter = useCreateEvacCenter();
   const updateCenter = useUpdateEvacCenter();
 
+  const parsedCapacity = Number(capacity);
+  const parsedOccupancy = Number(currentOccupancy);
+
+  const autoStatus: "open" | "full" = parsedCapacity > 0 && parsedOccupancy >= parsedCapacity ? "full" : "open";
+
   useEffect(() => {
+    if (!open) return;
+
     if (editCenter) {
-      setName(editCenter.name);
-      setCapacity(editCenter.capacity.toString());
-      setCurrentOccupancy(editCenter.current_occupancy.toString());
-      setStatus(editCenter.status);
+      setName(editCenter.name || "");
+      setCapacity(editCenter.capacity ? String(editCenter.capacity) : "");
+      setCurrentOccupancy(editCenter.current_occupancy ? String(editCenter.current_occupancy) : "");
+
       if (editCenter.latitude && editCenter.longitude) {
         setCoordinates({ lat: editCenter.latitude, lng: editCenter.longitude });
+      } else {
+        setCoordinates(null);
       }
-    } else if (initialCoords) {
-      setCoordinates(initialCoords);
-      setName('');
-      setCapacity('100');
-      setCurrentOccupancy('0');
-      setStatus('open');
-    } else {
-      setName('');
-      setCoordinates(null);
-      setCapacity('100');
-      setCurrentOccupancy('0');
-      setStatus('open');
+
+      return;
     }
+
+    if (initialCoords) {
+      setCoordinates(initialCoords);
+      setName("");
+      setCapacity("");
+      setCurrentOccupancy("");
+      return;
+    }
+
+    setName("");
+    setCapacity("");
+    setCurrentOccupancy("");
+    setCoordinates(null);
   }, [editCenter, initialCoords, open]);
 
-  const handleCapacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (/^\d*$/.test(val) && Number(val) <= 99999) {
-      setCapacity(val);
-    }
+  const resetForm = () => {
+    setName("");
+    setCapacity("");
+    setCurrentOccupancy("");
+    setCoordinates(null);
   };
 
-  const handleOccupancyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (/^\d*$/.test(val) && Number(val) <= 99999) {
-      setCurrentOccupancy(val);
-    }
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      toast.error('Please enter a center name');
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      toast.error("Please enter a center name");
       return;
     }
 
     if (!coordinates) {
-      toast.error('Please select a location on the map or enter coordinates');
+      toast.error("Please select a location on the map");
       return;
     }
 
-    const cap = parseInt(capacity) || 100;
-    const occ = parseInt(currentOccupancy) || 0;
+    if (capacity === "" || Number.isNaN(parsedCapacity) || parsedCapacity < 0) {
+      toast.error("Please enter a valid capacity");
+      return;
+    }
 
-    if (occ > cap) {
-      toast.error('Occupancy cannot exceed capacity');
+    if (currentOccupancy === "" || Number.isNaN(parsedOccupancy) || parsedOccupancy < 0) {
+      toast.error("Please enter a valid occupancy");
+      return;
+    }
+
+    if (parsedOccupancy > parsedCapacity) {
+      toast.error("Occupancy cannot exceed capacity");
       return;
     }
 
     try {
       const centerData = {
-        name: name.trim(),
-        location: name.trim(),
+        name: trimmedName,
+        location: trimmedName,
         latitude: coordinates.lat,
         longitude: coordinates.lng,
-        capacity: cap,
-        status: status as 'open' | 'full' | 'standby' | 'closed',
-        current_occupancy: occ,
+        capacity: parsedCapacity,
+        current_occupancy: parsedOccupancy,
+        status: autoStatus,
       };
 
       if (editCenter) {
-        await updateCenter.mutateAsync({ id: editCenter.id, ...centerData });
-        toast.success('Evacuation center updated successfully');
+        await updateCenter.mutateAsync({
+          id: editCenter.id,
+          ...centerData,
+        });
+
+        toast.success("Evacuation center updated successfully");
       } else {
         await createCenter.mutateAsync(centerData);
-        toast.success('Evacuation center created - Green marker added to map!');
+        toast.success("Evacuation center created successfully");
       }
-      
+
       handleClose();
     } catch (error) {
-      console.error('Error saving evacuation center:', error);
-      toast.error('Failed to save evacuation center');
+      console.error(error);
+      toast.error("Failed to save evacuation center");
     }
-  };
-
-  const handleClose = () => {
-    setName('');
-    setCoordinates(null);
-    setCapacity('100');
-    setCurrentOccupancy('0');
-    setStatus('open');
-    onClose();
   };
 
   const isLoading = createCenter.isPending || updateCenter.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="bg-command border-slate-700 text-white max-w-xl max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-white flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-emerald-400" />
-            {editCenter ? 'Edit Evacuation Center' : 'Add Evacuation Center'}
-          </DialogTitle>
-        </DialogHeader>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          handleClose();
+        }
+      }}
+    >
+      <DialogContent className="w-[95vw] max-w-xl border-slate-700 bg-command p-0 text-white sm:rounded-2xl">
+        <div className="flex max-h-[90vh] flex-col">
+          <DialogHeader className="shrink-0 border-b border-slate-700 px-4 py-4 sm:px-6">
+            <DialogTitle className="flex items-center gap-2 text-left text-white">
+              <MapPin className="h-5 w-5 text-emerald-400" />
+              {editCenter ? "Edit Evacuation Center" : "Add Evacuation Center"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-80px)] px-6 pb-6">
-          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-            {/* Center Name */}
-            <div className="space-y-2">
-              <Label className="text-slate-300">Center Name *</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Agpangi Elementary School"
-                className="bg-slate-800 border-slate-600 text-white"
-                required
+          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Center Name *</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Agpangi Elementary School"
+                  className="border-slate-600 bg-slate-800 text-base text-white"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Total Capacity *</Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type="number"
+                      min="0"
+                      value={capacity}
+                      onChange={(e) => setCapacity(e.target.value)}
+                      placeholder="e.g., 200"
+                      className="border-slate-600 bg-slate-800 pl-10 text-base text-white"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Current Occupants *</Label>
+                  <div className="relative">
+                    <Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type="number"
+                      min="0"
+                      value={currentOccupancy}
+                      onChange={(e) => setCurrentOccupancy(e.target.value)}
+                      placeholder="e.g., 75"
+                      className="border-slate-600 bg-slate-800 pl-10 text-base text-white"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-300">Status (Automatic)</Label>
+                <Input
+                  value={autoStatus.toUpperCase()}
+                  readOnly
+                  className={`border-slate-600 bg-slate-800 text-base font-semibold text-white ${
+                    autoStatus === "full" ? "text-rose-400" : "text-emerald-400"
+                  }`}
+                />
+                <p className="text-xs text-slate-400">Status automatically updates based on occupancy and capacity.</p>
+              </div>
+
+              <MapLocationPicker
+                coordinates={coordinates}
+                onCoordinatesChange={setCoordinates}
+                markerColor="#16a34a"
+                label="Location *"
               />
-            </div>
 
-            {/* Status */}
-            <div className="space-y-2">
-              <Label className="text-slate-300">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  {STATUS_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-white hover:bg-slate-700">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="flex flex-col gap-3 pt-4 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClose}
+                  className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
 
-            {/* Capacity & Occupancy */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-slate-300">Capacity</Label>
-                <Input
-                  value={capacity}
-                  onChange={handleCapacityChange}
-                  placeholder="100"
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
+                <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="mr-2 h-4 w-4" />
+                      {editCenter ? "Update Center" : "Add Center"}
+                    </>
+                  )}
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label className="text-slate-300">Current Occupancy</Label>
-                <Input
-                  value={currentOccupancy}
-                  onChange={handleOccupancyChange}
-                  placeholder="0"
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-            </div>
-
-            {/* Location Picker */}
-            <MapLocationPicker
-              coordinates={coordinates}
-              onCoordinatesChange={setCoordinates}
-              markerColor="#16a34a"
-              label="Location *"
-            />
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {editCenter ? 'Update Center' : 'Add Green Marker'}
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </ScrollArea>
+            </form>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
