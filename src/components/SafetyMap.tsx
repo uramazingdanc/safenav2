@@ -153,7 +153,8 @@ const SafetyMap = () => {
 
   // Fetch real data from database
   const { data: hazards = [], isLoading: hazardsLoading } = useActiveHazards();
-  const { data: evacCenters = [], isLoading: evacLoading } = useOpenEvacuationCenters();
+  const { data: allEvacCenters = [], isLoading: evacLoading } = useRealtimeEvacuationCenters();
+  const evacCenters = allEvacCenters.filter(c => c.status !== 'full');
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
