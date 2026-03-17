@@ -45,7 +45,7 @@ const UserProfile = () => {
 
   const displayBarangay = profile?.barangay || user?.user_metadata?.barangay || "";
 
-  const displayEmail = user?.email || profile?.email || "";
+  const displayEmail = user?.email || "";
 
   const handleSignOut = async () => {
     await signOut();
