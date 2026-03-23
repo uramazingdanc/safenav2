@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Navigation, ArrowLeft, Route, Clock, Ruler, AlertTriangle, Loader2, Crosshair, Building2, Keyboard, Sparkles } from 'lucide-react';
+import { MapPin, Navigation, ArrowLeft, Route, Clock, Ruler, AlertTriangle, Loader2, Crosshair, Building2, Keyboard, Sparkles, ShieldAlert, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useActiveHazards } from '@/hooks/useHazards';
 import { useOpenEvacuationCenters } from '@/hooks/useEvacuationCenters';
 import MapPickerModal from '@/components/MapPickerModal';
-import { useGenerateRoute, type RouteDirection } from '@/hooks/useGenerateRoute';
+import { useGenerateRoute, type RouteDirection, type AlternativeRoute } from '@/hooks/useGenerateRoute';
 
 // OpenLayers imports
 import OLMap from 'ol/Map';
@@ -55,10 +55,18 @@ const endPinStyle = new Style({
   }),
 });
 
-const routeStyle = new Style({
+const primaryRouteStyle = new Style({
   stroke: new Stroke({
     color: '#3b82f6',
-    width: 5,
+    width: 6,
+  }),
+});
+
+const altRouteStyle = new Style({
+  stroke: new Stroke({
+    color: '#9ca3af',
+    width: 4,
+    lineDash: [12, 8],
   }),
 });
 
@@ -112,48 +120,47 @@ const FindRoutePage = () => {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [routeGenerated, setRouteGenerated] = useState(false);
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
+  const [altRouteGeometry, setAltRouteGeometry] = useState<[number, number][] | null>(null);
+  const [showAltDirections, setShowAltDirections] = useState(false);
   const [routeInfo, setRouteInfo] = useState<{ 
     distance: string; 
     time: string; 
     hasHazard: boolean; 
     hazardCount: number;
-    directions: Array<{ instruction: string; distance: string; hasHazard?: boolean; hazardType?: string; hazardWarning?: string }>;
+    directions: RouteDirection[];
     nearbyEvacCount: number;
     summary?: string;
+    hazardStatus?: string;
+    alternativeRoute?: AlternativeRoute;
+    safetyReminders?: string[];
   } | null>(null);
   const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
   
-  // AI route generation hook
   const generateRouteMutation = useGenerateRoute();
   const [mapReady, setMapReady] = useState(false);
   
-  // Input mode tabs
   const [startInputMode, setStartInputMode] = useState<'map' | 'coords'>('map');
   const [endInputMode, setEndInputMode] = useState<'map' | 'coords' | 'evac'>('map');
   
-  // Manual coordinate inputs
   const [startLatInput, setStartLatInput] = useState('');
   const [startLngInput, setStartLngInput] = useState('');
   const [endLatInput, setEndLatInput] = useState('');
   const [endLngInput, setEndLngInput] = useState('');
   
-  // Selected evac center
   const [selectedEvac, setSelectedEvac] = useState<string>('');
-  
-  // Location loading state
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<OLMap | null>(null);
   const markersLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const routeLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const altRouteLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const hazardLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
 
   const defaultCenter = { lat: 11.5601, lng: 124.3949 };
 
-  // Calculate distance between two points (Haversine formula)
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const a = 
@@ -164,46 +171,29 @@ const FindRoutePage = () => {
     return R * c;
   };
 
-  // Get user's current location
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
-      toast({
-        title: 'Not Supported',
-        description: 'Geolocation is not supported by your browser.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Not Supported', description: 'Geolocation is not supported by your browser.', variant: 'destructive' });
       return;
     }
-
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
         setStartCoords(coords);
         setStartLatInput(coords.lat.toFixed(6));
         setStartLngInput(coords.lng.toFixed(6));
         setIsGettingLocation(false);
-        toast({
-          title: '📍 Location Found',
-          description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}`,
-        });
+        toast({ title: '📍 Location Found', description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}` });
       },
       (error) => {
         setIsGettingLocation(false);
-        toast({
-          title: 'Location Error',
-          description: error.message || 'Failed to get your location.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Location Error', description: error.message || 'Failed to get your location.', variant: 'destructive' });
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
-  // Handle manual coordinate input
   const handleSetStartCoords = () => {
     const lat = parseFloat(startLatInput);
     const lng = parseFloat(startLngInput);
@@ -226,16 +216,12 @@ const FindRoutePage = () => {
     }
   };
 
-  // Handle evacuation center selection
   const handleSelectEvac = (evacId: string) => {
     setSelectedEvac(evacId);
     const center = evacCenters.find(c => c.id === evacId);
     if (center && center.latitude && center.longitude) {
       setEndCoords({ lat: center.latitude, lng: center.longitude });
-      toast({
-        title: '🏠 Evacuation Center Selected',
-        description: center.name,
-      });
+      toast({ title: '🏠 Evacuation Center Selected', description: center.name });
     }
   };
 
@@ -253,20 +239,24 @@ const FindRoutePage = () => {
 
       const markersSource = new VectorSource();
       const routeSource = new VectorSource();
+      const altRouteSource = new VectorSource();
       const hazardSource = new VectorSource();
 
       const markersLayer = new VectorLayer({ source: markersSource, zIndex: 20 });
+      const altRouteLayer = new VectorLayer({ source: altRouteSource, zIndex: 4 });
       const routeLayer = new VectorLayer({ source: routeSource, zIndex: 5 });
       const hazardLayer = new VectorLayer({ source: hazardSource, zIndex: 10 });
 
       markersLayerRef.current = markersLayer;
       routeLayerRef.current = routeLayer;
+      altRouteLayerRef.current = altRouteLayer;
       hazardLayerRef.current = hazardLayer;
 
       const map = new OLMap({
         target: mapRef.current,
         layers: [
           new TileLayer({ source: new OSM() }),
+          altRouteLayer,
           routeLayer,
           hazardLayer,
           markersLayer,
@@ -297,29 +287,35 @@ const FindRoutePage = () => {
 
     const markersSource = markersLayerRef.current?.getSource();
     const routeSource = routeLayerRef.current?.getSource();
+    const altRouteSource = altRouteLayerRef.current?.getSource();
     const hazardSource = hazardLayerRef.current?.getSource();
 
     if (!markersSource || !routeSource || !hazardSource) return;
 
     markersSource.clear();
     routeSource.clear();
+    altRouteSource?.clear();
     hazardSource.clear();
 
-    // Add start marker
-    const startFeature = new Feature({
-      geometry: new Point(fromLonLat([startCoords.lng, startCoords.lat])),
-    });
+    // Start marker
+    const startFeature = new Feature({ geometry: new Point(fromLonLat([startCoords.lng, startCoords.lat])) });
     startFeature.setStyle(startPinStyle);
     markersSource.addFeature(startFeature);
 
-    // Add end marker
-    const endFeature = new Feature({
-      geometry: new Point(fromLonLat([endCoords.lng, endCoords.lat])),
-    });
+    // End marker
+    const endFeature = new Feature({ geometry: new Point(fromLonLat([endCoords.lng, endCoords.lat])) });
     endFeature.setStyle(endPinStyle);
     markersSource.addFeature(endFeature);
 
-    // Draw actual road geometry from OSRM, or fallback to straight line
+    // Draw alternative route first (dashed, behind primary)
+    if (altRouteGeometry && altRouteGeometry.length > 0 && altRouteSource) {
+      const altCoords = altRouteGeometry.map(coord => fromLonLat(coord));
+      const altFeature = new Feature({ geometry: new LineString(altCoords) });
+      altFeature.setStyle(altRouteStyle);
+      altRouteSource.addFeature(altFeature);
+    }
+
+    // Draw primary route (solid)
     let routeCoords: number[][];
     if (routeGeometry && routeGeometry.length > 0) {
       routeCoords = routeGeometry.map(coord => fromLonLat(coord));
@@ -330,13 +326,11 @@ const FindRoutePage = () => {
       ];
     }
 
-    const routeFeature = new Feature({
-      geometry: new LineString(routeCoords),
-    });
-    routeFeature.setStyle(routeStyle);
+    const routeFeature = new Feature({ geometry: new LineString(routeCoords) });
+    routeFeature.setStyle(primaryRouteStyle);
     routeSource.addFeature(routeFeature);
 
-    // Add hazard markers near route
+    // Hazard markers near route
     const routeBuffer = 0.02;
     const nearbyHazards = hazards.filter(h => {
       if (!h.latitude || !h.longitude) return false;
@@ -349,23 +343,17 @@ const FindRoutePage = () => {
 
     nearbyHazards.forEach(hazard => {
       if (hazard.latitude && hazard.longitude) {
-        const feature = new Feature({
-          geometry: new Point(fromLonLat([hazard.longitude, hazard.latitude])),
-        });
+        const feature = new Feature({ geometry: new Point(fromLonLat([hazard.longitude, hazard.latitude])) });
         feature.setStyle(getHazardStyle(hazard.type, hazard.severity));
         hazardSource.addFeature(feature);
       }
     });
 
-    // Fit view to show entire route
+    // Fit view
     const extent = routeSource.getExtent();
-    mapInstanceRef.current?.getView().fit(extent, {
-      padding: [60, 60, 60, 60],
-      maxZoom: 16,
-      duration: 500,
-    });
+    mapInstanceRef.current?.getView().fit(extent, { padding: [60, 60, 60, 60], maxZoom: 16, duration: 500 });
 
-  }, [mapReady, startCoords, endCoords, hazards, routeGeometry]);
+  }, [mapReady, startCoords, endCoords, hazards, routeGeometry, altRouteGeometry]);
 
   const openPicker = (mode: 'start' | 'end') => {
     setPickerMode(mode);
@@ -384,68 +372,15 @@ const FindRoutePage = () => {
     }
   };
 
-  // Fallback: Generate simulated street names for route when AI fails
-  const generateFallbackDirections = (totalDistance: number, hazardsOnRoute: typeof hazards) => {
-    const streets = [
-      'Biliran Circumferential Road',
-      'Caneja Street',
-      'Castin Street',
-      'Padre Innocentes Street',
-      'Rizal Avenue',
-      'Mabini Street',
-      'Del Pilar Road',
-      'Burgos Street',
-      'Luna Avenue',
-      'Bonifacio Street',
-    ];
-    // Shuffle and pick 4-6 streets
-    const shuffled = streets.sort(() => 0.5 - Math.random());
-    const selectedStreets = shuffled.slice(0, 4 + Math.floor(Math.random() * 3));
-    
-    const segmentDistances: number[] = [];
-    let remainingDist = totalDistance;
-    
-    // Distribute distance across segments
-    for (let i = 0; i < selectedStreets.length; i++) {
-      if (i === selectedStreets.length - 1) {
-        segmentDistances.push(remainingDist);
-      } else {
-        const segment = remainingDist * (0.15 + Math.random() * 0.25);
-        segmentDistances.push(segment);
-        remainingDist -= segment;
-      }
-    }
-
-    // Create detailed directions
-    return selectedStreets.map((street, idx) => {
-      const segmentDist = segmentDistances[idx];
-      const distStr = segmentDist < 1 
-        ? `${Math.round(segmentDist * 1000)} m` 
-        : `${segmentDist.toFixed(2)} km`;
-      
-      // Check if any hazard is near this segment
-      const segmentHasHazard = hazardsOnRoute.length > 0 && idx === Math.floor(selectedStreets.length / 2);
-      const hazardNearby = segmentHasHazard ? hazardsOnRoute[0] : null;
-      
-      return {
-        instruction: `on ${street}`,
-        distance: `(${distStr})`,
-        hasHazard: segmentHasHazard,
-        hazardType: hazardNearby?.type,
-      };
-    });
-  };
-
   const handleGenerateRoute = async () => {
     if (!startCoords || !endCoords) return;
     
     setIsGeneratingRoute(true);
     
     const totalDistance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
-    const walkingSpeed = 5;
-    const timeMinutes = Math.round((totalDistance / walkingSpeed) * 60);
+    const motorcycleSpeed = 40; // km/h
+    const timeMinutes = Math.round((totalDistance / motorcycleSpeed) * 60);
 
-    // Check for hazards along route with wider buffer
     const routeBuffer = 0.02;
     const hazardsOnRoute = hazards.filter(h => {
       if (!h.latitude || !h.longitude) return false;
@@ -456,20 +391,17 @@ const FindRoutePage = () => {
       return h.latitude >= minLat && h.latitude <= maxLat && h.longitude >= minLng && h.longitude <= maxLng;
     });
 
-    // Count nearby evacuation centers
     const nearbyEvacCenters = evacCenters.filter(e => {
       if (!e.latitude || !e.longitude) return false;
       const dist = calculateDistance(
         (startCoords.lat + endCoords.lat) / 2,
         (startCoords.lng + endCoords.lng) / 2,
-        e.latitude,
-        e.longitude
+        e.latitude, e.longitude
       );
-      return dist < 5; // Within 5km
+      return dist < 5;
     });
 
     try {
-      // Try AI-powered route generation
       const aiResponse = await generateRouteMutation.mutateAsync({
         startCoords,
         endCoords,
@@ -484,71 +416,57 @@ const FindRoutePage = () => {
         walkingTime: timeMinutes,
       });
 
-      // Format AI directions to match expected format
       const formattedDirections = aiResponse.directions.map(dir => ({
-        instruction: dir.instruction,
+        ...dir,
         distance: dir.distance.startsWith('(') ? dir.distance : `(${dir.distance})`,
-        hasHazard: dir.hasHazard,
-        hazardType: dir.hazardType,
-        hazardWarning: dir.hazardWarning,
       }));
 
-      // Store the actual road geometry for map drawing
       setRouteGeometry(aiResponse.routeGeometry || null);
+      setAltRouteGeometry(aiResponse.alternativeRoute?.routeGeometry || null);
+
+      const distKm = aiResponse.distance ? (aiResponse.distance / 1000).toFixed(2) + ' km' : (totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`);
+      const durMin = aiResponse.duration ? Math.round(aiResponse.duration / 60) + ' min' : `${timeMinutes} min`;
 
       setRouteInfo({
-        distance: aiResponse.summary?.match(/([\d.]+)\s*km/)?.[0] || (totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`),
-        time: aiResponse.summary?.match(/~?(\d+)\s*min/)?.[0] || (timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`),
-        hasHazard: aiResponse.hazardStatus === 'HAZARDS_PRESENT',
-        hazardCount: hazardsOnRoute.length,
+        distance: distKm,
+        time: durMin,
+        hasHazard: aiResponse.hazardStatus !== 'ROUTE_CLEAR',
+        hazardCount: aiResponse.hazardCount || hazardsOnRoute.length,
         directions: formattedDirections,
         nearbyEvacCount: nearbyEvacCenters.length,
         summary: aiResponse.summary,
+        hazardStatus: aiResponse.hazardStatus,
+        alternativeRoute: aiResponse.alternativeRoute,
+        safetyReminders: aiResponse.safetyReminders,
       });
 
       setRouteGenerated(true);
 
-      if (aiResponse.hazardStatus === 'HAZARDS_PRESENT') {
-        toast({
-          title: '⚠️ Hazard Warning',
-          description: aiResponse.summary || `${hazardsOnRoute.length} hazard(s) detected near your route.`,
-          variant: 'destructive',
-        });
+      if (aiResponse.hazardStatus === 'ROUTE_CLEAR') {
+        toast({ title: '✅ Safe Route Generated', description: 'Route is clear of reported hazards.' });
+      } else if (aiResponse.hazardStatus === 'ALTERNATIVE_ROUTE_USED') {
+        toast({ title: '🔀 Alternative Route Available', description: 'A safer route was selected. Alternative route shown as dashed line.' });
       } else {
-        toast({
-          title: '✅ Safe Route Generated',
-          description: 'AI-powered directions ready. No known hazards along your route.',
-        });
+        toast({ title: '⚠️ Hazard Warning', description: 'No hazard-free route available. Proceed with caution.', variant: 'destructive' });
       }
     } catch (error) {
-      console.error('AI route generation failed, using fallback:', error);
+      console.error('Route generation failed, using fallback:', error);
       
-      // Fallback to simulated directions
-      const fallbackDirections = generateFallbackDirections(totalDistance, hazardsOnRoute);
+      setRouteGeometry(null);
+      setAltRouteGeometry(null);
 
       setRouteInfo({
         distance: totalDistance < 1 ? `${Math.round(totalDistance * 1000)} m` : `${totalDistance.toFixed(2)} km`,
         time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
         hasHazard: hazardsOnRoute.length > 0,
         hazardCount: hazardsOnRoute.length,
-        directions: fallbackDirections,
+        directions: [],
         nearbyEvacCount: nearbyEvacCenters.length,
+        hazardStatus: hazardsOnRoute.length > 0 ? 'HAZARDS_PRESENT_NO_ALTERNATIVE' : 'ROUTE_CLEAR',
       });
 
       setRouteGenerated(true);
-
-      toast({
-        title: '📍 Route Generated',
-        description: 'Using estimated directions. AI service temporarily unavailable.',
-      });
-
-      if (hazardsOnRoute.length > 0) {
-        toast({
-          title: '⚠️ Hazard Warning',
-          description: `${hazardsOnRoute.length} hazard(s) detected near your route. Proceed with caution.`,
-          variant: 'destructive',
-        });
-      }
+      toast({ title: '📍 Route Generated', description: 'Using estimated directions. Route service temporarily unavailable.' });
     } finally {
       setIsGeneratingRoute(false);
     }
@@ -558,6 +476,8 @@ const FindRoutePage = () => {
     setRouteGenerated(false);
     setRouteInfo(null);
     setRouteGeometry(null);
+    setAltRouteGeometry(null);
+    setShowAltDirections(false);
     setStartCoords(null);
     setEndCoords(null);
     setMapReady(false);
@@ -574,7 +494,6 @@ const FindRoutePage = () => {
 
   const canGenerate = startCoords && endCoords;
 
-  // Get cardinal direction for initial heading
   const getInitialHeading = () => {
     if (!startCoords || !endCoords) return 'North';
     const latDiff = endCoords.lat - startCoords.lat;
@@ -586,13 +505,30 @@ const FindRoutePage = () => {
     return `${nsDirection}-${ewDirection}`;
   };
 
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'ROUTE_CLEAR':
+        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+      case 'ALTERNATIVE_ROUTE_USED':
+        return { label: 'ALT. ROUTE USED', className: 'bg-blue-500 text-white' };
+      case 'HAZARDS_PRESENT_NO_ALTERNATIVE':
+        return { label: 'HAZARDS PRESENT', className: 'bg-amber-400 text-amber-900' };
+      default:
+        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+    }
+  };
+
   if (routeGenerated && routeInfo) {
     const initialHeading = getInitialHeading();
+    const badge = getStatusBadge(routeInfo.hazardStatus);
+    const activeDirections = showAltDirections && routeInfo.alternativeRoute 
+      ? routeInfo.alternativeRoute.directions 
+      : routeInfo.directions;
     
     return (
       <div className="h-[calc(100vh-8rem)] md:h-screen flex flex-col bg-background">
-        {/* Result Map - Top Section */}
-        <div className="h-[45%] relative">
+        {/* Result Map */}
+        <div className="h-[40%] relative">
           <div ref={mapRef} className="w-full h-full" />
           
           {!mapReady && (
@@ -601,7 +537,7 @@ const FindRoutePage = () => {
             </div>
           )}
 
-          {/* Legend Toggle */}
+          {/* Route Legend */}
           <div className="absolute bottom-3 left-3 bg-background/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border text-xs">
             <p className="font-semibold mb-1">Legend</p>
             <div className="space-y-1">
@@ -613,6 +549,16 @@ const FindRoutePage = () => {
                 <div className="w-3 h-3 rounded-full bg-red-500" />
                 <span>End</span>
               </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-0.5 bg-blue-500" />
+                <span>Primary Route</span>
+              </div>
+              {altRouteGeometry && (
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-0.5 border-t-2 border-dashed border-gray-400" />
+                  <span>Alternative Route</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -637,7 +583,7 @@ const FindRoutePage = () => {
         <div className="flex-1 overflow-y-auto">
           <Card className="mx-3 my-3 border-2">
             <CardContent className="p-4">
-              {/* Distance, Duration & Hazard Status Header */}
+              {/* Distance, Duration & Status */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-6">
                   <div>
@@ -645,31 +591,69 @@ const FindRoutePage = () => {
                     <p className="text-xl font-bold text-foreground">{routeInfo.distance}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Duration:</p>
+                    <p className="text-xs text-muted-foreground">Est. Time (🏍️):</p>
                     <p className="text-xl font-bold text-foreground">{routeInfo.time}</p>
                   </div>
                 </div>
-                <div className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide ${
-                  routeInfo.hasHazard 
-                    ? 'bg-amber-400 text-amber-900' 
-                    : 'bg-green-500 text-white'
-                }`}>
-                  {routeInfo.hasHazard ? 'HAZARDS_PRESENT' : 'ROUTE_CLEAR'}
+                <div className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide ${badge.className}`}>
+                  {badge.label}
                 </div>
               </div>
 
-              {/* Detailed Directions */}
+              {/* Route context message */}
+              {routeInfo.summary && (
+                <div className={`p-3 rounded-lg mb-4 text-sm ${
+                  routeInfo.hazardStatus === 'ROUTE_CLEAR' 
+                    ? 'bg-green-50 border border-green-200 text-green-800' 
+                    : routeInfo.hazardStatus === 'ALTERNATIVE_ROUTE_USED'
+                      ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                      : 'bg-amber-50 border border-amber-200 text-amber-800'
+                }`}>
+                  {routeInfo.summary}
+                </div>
+              )}
+
+              {/* Alternative Route Toggle */}
+              {routeInfo.alternativeRoute && (
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant={!showAltDirections ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setShowAltDirections(false)}
+                  >
+                    Primary Route
+                  </Button>
+                  <Button
+                    variant={showAltDirections ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setShowAltDirections(true)}
+                  >
+                    Alternative Route
+                  </Button>
+                </div>
+              )}
+
+              {/* Alt route summary when viewing it */}
+              {showAltDirections && routeInfo.alternativeRoute && (
+                <div className="p-3 bg-muted/50 rounded-lg mb-4 text-sm text-muted-foreground">
+                  {routeInfo.alternativeRoute.summary}
+                </div>
+              )}
+
+              {/* Turn-by-turn Directions */}
               <div className="space-y-1 mb-4 text-sm">
-                {/* Initial direction */}
                 <p className="text-muted-foreground">
                   <span className="inline-block w-16">(Start)</span>
                   Head {initialHeading}
                 </p>
                 
-                {/* Street by street directions */}
-                {routeInfo.directions.map((dir, idx) => (
+                {activeDirections.map((dir, idx) => (
                   <div key={idx} className="flex items-start gap-1">
-                    <span className="text-muted-foreground w-16 flex-shrink-0">{dir.distance}</span>
+                    <span className="text-muted-foreground w-16 flex-shrink-0">
+                      {dir.distance.startsWith('(') ? dir.distance : `(${dir.distance})`}
+                    </span>
                     <span className={dir.hasHazard ? 'text-amber-600 font-medium' : 'text-foreground'}>
                       {dir.instruction}
                       {dir.hasHazard && (
@@ -680,32 +664,42 @@ const FindRoutePage = () => {
                     </span>
                   </div>
                 ))}
+
+                {activeDirections.length === 0 && (
+                  <p className="text-muted-foreground italic">Detailed directions unavailable. Follow the route on the map.</p>
+                )}
               </div>
 
-              {/* Hazard Warning Banner */}
-              {routeInfo.hasHazard && (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">
-                    {routeInfo.summary || 'Route has hazards nearby. Proceed with caution and be prepared for detours.'}
-                  </p>
+              {/* Hazard warnings with details */}
+              {routeInfo.hasHazard && routeInfo.directions.some(d => d.hazardWarning) && (
+                <div className="space-y-2 mb-4">
+                  {routeInfo.directions.filter(d => d.hazardWarning).map((dir, idx) => (
+                    <div key={idx} className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-amber-800">{dir.hazardWarning}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Safety Reminders */}
+              {routeInfo.safetyReminders && routeInfo.safetyReminders.length > 0 && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldAlert className="w-4 h-4 text-red-600" />
+                    <p className="text-sm font-semibold text-red-800">Safety Reminders</p>
+                  </div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {routeInfo.safetyReminders.map((reminder, idx) => (
+                      <li key={idx} className="text-sm text-red-700">{reminder}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
               {/* Location Summary */}
               <div className="pt-3 border-t text-xs text-muted-foreground">
                 <p>Naval, Biliran • {routeInfo.hazardCount} hazard{routeInfo.hazardCount !== 1 ? 's' : ''} • {routeInfo.nearbyEvacCount} evacuation center{routeInfo.nearbyEvacCount !== 1 ? 's' : ''}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Safety Reminder */}
-          <Card className="mx-3 mb-3 bg-blue-50 border-blue-200">
-            <CardContent className="p-3 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-blue-800">
-                <p className="font-semibold">Safety Reminder</p>
-                <p>Stay alert, follow local authorities' instructions, and have emergency contacts ready.</p>
               </div>
             </CardContent>
           </Card>
@@ -731,7 +725,7 @@ const FindRoutePage = () => {
         </Button>
         <div>
           <h1 className="text-xl font-bold">Plan Safe Route</h1>
-          <p className="text-sm text-primary-foreground/80">Set your start and destination points</p>
+          <p className="text-sm text-primary-foreground/80">Motorcycle-based routing with hazard avoidance</p>
         </div>
       </div>
 
@@ -745,67 +739,31 @@ const FindRoutePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Current selection display */}
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[48px]">
               <MapPin className="w-5 h-5 text-green-500 flex-shrink-0" />
               <span className="text-sm flex-1">
-                {startCoords 
-                  ? `${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}`
-                  : 'Not set'
-                }
+                {startCoords ? `${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}` : 'Not set'}
               </span>
             </div>
 
-            {/* Input mode tabs */}
             <Tabs value={startInputMode} onValueChange={(v) => setStartInputMode(v as 'map' | 'coords')}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="map" className="text-xs">
-                  <MapPin className="w-3 h-3 mr-1" />
-                  Pick on Map
-                </TabsTrigger>
-                <TabsTrigger value="coords" className="text-xs">
-                  <Keyboard className="w-3 h-3 mr-1" />
-                  Coordinates
-                </TabsTrigger>
+                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />Pick on Map</TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />Coordinates</TabsTrigger>
               </TabsList>
 
               <TabsContent value="map" className="mt-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full border-green-500 text-green-600 hover:bg-green-50"
-                  onClick={() => openPicker('start')}
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  📍 Pin Start on Map
+                <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50" onClick={() => openPicker('start')}>
+                  <MapPin className="w-4 h-4 mr-2" />📍 Pin Start on Map
                 </Button>
               </TabsContent>
 
               <TabsContent value="coords" className="mt-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Latitude</Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="11.5601"
-                      value={startLatInput}
-                      onChange={(e) => setStartLatInput(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Longitude</Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="124.3949"
-                      value={startLngInput}
-                      onChange={(e) => setStartLngInput(e.target.value)}
-                    />
-                  </div>
+                  <div><Label className="text-xs">Latitude</Label><Input type="number" step="any" placeholder="11.5601" value={startLatInput} onChange={(e) => setStartLatInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">Longitude</Label><Input type="number" step="any" placeholder="124.3949" value={startLngInput} onChange={(e) => setStartLngInput(e.target.value)} /></div>
                 </div>
-                <Button variant="outline" className="w-full" onClick={handleSetStartCoords}>
-                  Set Coordinates
-                </Button>
+                <Button variant="outline" className="w-full" onClick={handleSetStartCoords}>Set Coordinates</Button>
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -820,7 +778,6 @@ const FindRoutePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Current selection display */}
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[48px]">
               <MapPin className="w-5 h-5 text-red-500 flex-shrink-0" />
               <span className="text-sm flex-1">
@@ -828,80 +785,40 @@ const FindRoutePage = () => {
                   ? selectedEvac 
                     ? evacCenters.find(c => c.id === selectedEvac)?.name || `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
                     : `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
-                  : 'Not set'
-                }
+                  : 'Not set'}
               </span>
             </div>
 
-            {/* Input mode tabs */}
             <Tabs value={endInputMode} onValueChange={(v) => setEndInputMode(v as any)}>
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="map" className="text-xs">
-                  <MapPin className="w-3 h-3 mr-1" />
-                  Pick on Map
-                </TabsTrigger>
-                <TabsTrigger value="coords" className="text-xs">
-                  <Keyboard className="w-3 h-3 mr-1" />
-                  Coordinates
-                </TabsTrigger>
-                <TabsTrigger value="evac" className="text-xs">
-                  <Building2 className="w-3 h-3 mr-1" />
-                  Evac Center
-                </TabsTrigger>
+                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />Pick on Map</TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />Coordinates</TabsTrigger>
+                <TabsTrigger value="evac" className="text-xs"><Building2 className="w-3 h-3 mr-1" />Evac Center</TabsTrigger>
               </TabsList>
 
               <TabsContent value="map" className="mt-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full border-red-500 text-red-600 hover:bg-red-50"
-                  onClick={() => openPicker('end')}
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  📍 Pin Destination on Map
+                <Button variant="outline" className="w-full border-red-500 text-red-600 hover:bg-red-50" onClick={() => openPicker('end')}>
+                  <MapPin className="w-4 h-4 mr-2" />📍 Pin Destination on Map
                 </Button>
               </TabsContent>
 
               <TabsContent value="coords" className="mt-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Latitude</Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="11.5601"
-                      value={endLatInput}
-                      onChange={(e) => setEndLatInput(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Longitude</Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="124.3949"
-                      value={endLngInput}
-                      onChange={(e) => setEndLngInput(e.target.value)}
-                    />
-                  </div>
+                  <div><Label className="text-xs">Latitude</Label><Input type="number" step="any" placeholder="11.5601" value={endLatInput} onChange={(e) => setEndLatInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">Longitude</Label><Input type="number" step="any" placeholder="124.3949" value={endLngInput} onChange={(e) => setEndLngInput(e.target.value)} /></div>
                 </div>
-                <Button variant="outline" className="w-full" onClick={handleSetEndCoords}>
-                  Set Coordinates
-                </Button>
+                <Button variant="outline" className="w-full" onClick={handleSetEndCoords}>Set Coordinates</Button>
               </TabsContent>
 
               <TabsContent value="evac" className="mt-3">
                 <Select value={selectedEvac} onValueChange={handleSelectEvac}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose an evacuation center" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Choose an evacuation center" /></SelectTrigger>
                   <SelectContent>
                     {evacCenters.length === 0 ? (
                       <SelectItem value="none" disabled>No evacuation centers available</SelectItem>
                     ) : (
                       evacCenters.map((center) => (
-                        <SelectItem key={center.id} value={center.id}>
-                          🏠 {center.name} - {center.location}
-                        </SelectItem>
+                        <SelectItem key={center.id} value={center.id}>🏠 {center.name} - {center.location}</SelectItem>
                       ))
                     )}
                   </SelectContent>
@@ -912,23 +829,11 @@ const FindRoutePage = () => {
         </Card>
 
         {/* Generate Route Button */}
-        <Button 
-          className="w-full h-12 text-base"
-          disabled={!canGenerate || isGeneratingRoute}
-          onClick={handleGenerateRoute}
-        >
+        <Button className="w-full h-12 text-base" disabled={!canGenerate || isGeneratingRoute} onClick={handleGenerateRoute}>
           {isGeneratingRoute ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              <Sparkles className="w-4 h-4 mr-1" />
-              Generating AI Route...
-            </>
+            <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generating Route...</>
           ) : (
-            <>
-              <Navigation className="w-5 h-5 mr-2" />
-              <Sparkles className="w-4 h-4 mr-1" />
-              Generate Safe Route
-            </>
+            <><Navigation className="w-5 h-5 mr-2" />🏍️ Generate Safe Route</>
           )}
         </Button>
 
@@ -939,7 +844,6 @@ const FindRoutePage = () => {
         )}
       </div>
 
-      {/* Map Picker Modal */}
       <MapPickerModal
         open={isPickerOpen}
         onOpenChange={setIsPickerOpen}

@@ -1,6 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 
 export interface RouteDirection {
   instruction: string;
@@ -10,11 +9,25 @@ export interface RouteDirection {
   hazardWarning?: string;
 }
 
+export interface AlternativeRoute {
+  directions: RouteDirection[];
+  summary: string;
+  routeGeometry: [number, number][];
+  distance: number;
+  duration: number;
+  hazardCount: number;
+}
+
 export interface RouteResponse {
   directions: RouteDirection[];
   summary?: string;
-  hazardStatus: 'HAZARDS_PRESENT' | 'ROUTE_CLEAR';
-  routeGeometry?: [number, number][]; // [lng, lat] pairs from OSRM
+  hazardStatus: 'ROUTE_CLEAR' | 'ALTERNATIVE_ROUTE_USED' | 'HAZARDS_PRESENT_NO_ALTERNATIVE';
+  routeGeometry?: [number, number][];
+  distance?: number;
+  duration?: number;
+  hazardCount?: number;
+  alternativeRoute?: AlternativeRoute;
+  safetyReminders?: string[];
 }
 
 interface Hazard {
@@ -45,7 +58,6 @@ export function useGenerateRoute() {
         throw new Error(error.message || 'Failed to generate route');
       }
 
-      // Check if the response indicates a fallback is needed
       if (data?.fallback || data?.error) {
         throw new Error(data.error || 'AI service unavailable');
       }
@@ -54,7 +66,6 @@ export function useGenerateRoute() {
     },
     onError: (error) => {
       console.error('Route generation failed:', error);
-      // Don't show toast here - let the component handle fallback
     },
   });
 }
