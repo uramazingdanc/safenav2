@@ -868,7 +868,7 @@ const SafetyMap = () => {
                     className="flex-1 text-xs"
                     onClick={() => setShowAltDirections(true)}
                   >
-                    Alternative Route
+                    {t.alternativeRoute}
                   </Button>
                 </div>
               )}
