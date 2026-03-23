@@ -785,7 +785,7 @@ const FindRoutePage = () => {
                   ? selectedEvac 
                     ? evacCenters.find(c => c.id === selectedEvac)?.name || `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
                     : `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
-                  : 'Not set'}
+                  : t.notSet}
               </span>
             </div>
 
