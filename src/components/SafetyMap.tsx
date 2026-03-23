@@ -636,7 +636,7 @@ const SafetyMap = () => {
               onClick={() => handleStartSelection('start')}
             >
               <MapPin className="w-4 h-4 mr-1" />
-              {startCoords ? '✓ Start Set' : 'Pin Start'}
+              {startCoords ? t.startSet : t.pinStart}
             </Button>
             <Button 
               variant={selectionMode === 'end' ? 'default' : 'outline'} 
@@ -645,7 +645,7 @@ const SafetyMap = () => {
               onClick={() => handleStartSelection('end')}
             >
               <Navigation className="w-4 h-4 mr-1" />
-              {endCoords ? '✓ End Set' : 'Pin End'}
+              {endCoords ? t.endSet : t.pinEnd}
             </Button>
           </div>
 
