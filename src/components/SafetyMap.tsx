@@ -700,7 +700,7 @@ const SafetyMap = () => {
           onClick={() => setShowLegend(!showLegend)}
         >
           {showLegend ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-          {showLegend ? 'Hide' : 'Show'} Legend
+          {showLegend ? t.hideLegend : t.showLegend}
         </Button>
 
         {/* Floating Legend */}
