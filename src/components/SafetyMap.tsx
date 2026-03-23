@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Navigation, Loader2, Info, Route, X, Check, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Info, Route, X, Check, Eye, EyeOff, AlertTriangle, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveHazards } from '@/hooks/useHazards';
@@ -10,7 +10,7 @@ import { useRealtimeEvacuationCenters } from '@/hooks/useRealtimeEvacuationCente
 import WeatherCard from '@/components/WeatherCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
-import { useGenerateRoute } from '@/hooks/useGenerateRoute';
+import { useGenerateRoute, type RouteDirection, type AlternativeRoute } from '@/hooks/useGenerateRoute';
 
 // OpenLayers imports
 import OLMap from 'ol/Map';
@@ -27,10 +27,9 @@ import { Style, Circle, Fill, Stroke, Text as OLText } from 'ol/style';
 import Overlay from 'ol/Overlay';
 import 'ol/ol.css';
 
-// Hazard types - Updated to match requirements
+// Hazard types
 const HAZARD_TYPES = ['flooding', 'landslide', 'road_damage', 'road_obstruction', 'other'];
 
-// Emoji mapping for hazard types
 const getHazardEmoji = (type: string): string => {
   const typeNormalized = type.toLowerCase();
   if (typeNormalized.includes('flood')) return '🌊';
@@ -41,18 +40,16 @@ const getHazardEmoji = (type: string): string => {
   return '⚠️';
 };
 
-// Severity-based colors
 const getSeverityColor = (severity: string): string => {
   const colorMap: Record<string, string> = {
-    low: '#eab308',      // Yellow
-    medium: '#f97316',   // Orange
-    high: '#dc2626',     // Red
-    critical: '#991b1b', // Dark Red
+    low: '#eab308',
+    medium: '#f97316',
+    high: '#dc2626',
+    critical: '#991b1b',
   };
   return colorMap[severity] || '#dc2626';
 };
 
-// Create hazard style with emoji
 const getHazardStyle = (type: string, severity: string) => {
   const color = getSeverityColor(severity);
   const emoji = getHazardEmoji(type);
@@ -72,7 +69,6 @@ const getHazardStyle = (type: string, severity: string) => {
   });
 };
 
-// Marker styles
 const userStyle = new Style({
   image: new Circle({
     radius: 10,
@@ -95,10 +91,18 @@ const evacStyle = new Style({
   }),
 });
 
-const routeStyle = new Style({
+const primaryRouteStyle = new Style({
   stroke: new Stroke({
     color: '#3b82f6',
-    width: 5,
+    width: 6,
+  }),
+});
+
+const altRouteStyle = new Style({
+  stroke: new Stroke({
+    color: '#9ca3af',
+    width: 4,
+    lineDash: [12, 8],
   }),
 });
 
@@ -134,14 +138,27 @@ const SafetyMap = () => {
   const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [endCoords, setEndCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeGenerated, setRouteGenerated] = useState(false);
-  const [routeInfo, setRouteInfo] = useState<{ distance: string; time: string } | null>(null);
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
+  const [altRouteGeometry, setAltRouteGeometry] = useState<[number, number][] | null>(null);
   const [isSelectingRoute, setIsSelectingRoute] = useState(false);
   const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
   const generateRouteMutation = useGenerateRoute();
   const [selectionMode, setSelectionMode] = useState<'start' | 'end' | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [activeTab, setActiveTab] = useState('map');
+  const [showDirectionsPanel, setShowDirectionsPanel] = useState(false);
+  const [showAltDirections, setShowAltDirections] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{
+    distance: string;
+    time: string;
+    hasHazard: boolean;
+    hazardCount: number;
+    directions: RouteDirection[];
+    summary?: string;
+    hazardStatus?: string;
+    alternativeRoute?: AlternativeRoute;
+    safetyReminders?: string[];
+  } | null>(null);
   const [popupContent, setPopupContent] = useState<{
     type: 'hazard' | 'evac' | 'user' | null;
     data: any;
@@ -151,7 +168,6 @@ const SafetyMap = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  // Fetch real data from database
   const { data: hazards = [], isLoading: hazardsLoading } = useActiveHazards();
   const { data: allEvacCenters = [], isLoading: evacLoading } = useRealtimeEvacuationCenters();
   const evacCenters = allEvacCenters.filter(c => c.status !== 'full');
@@ -161,22 +177,20 @@ const SafetyMap = () => {
   const overlayRef = useRef<Overlay | null>(null);
   const userLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const routeLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const altRouteLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const hazardLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const evacLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const routePointsLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
 
-  // Default center (Naval, Biliran, Philippines) - [lng, lat] for OpenLayers
   const defaultCenter: [number, number] = [124.3989, 11.5669];
 
-  // OpenLayers controls the popup element; React controls its contents via portal.
   useEffect(() => {
     if (!popupHost) return;
     popupHost.style.display = popupContent.type ? 'block' : 'none';
   }, [popupHost, popupContent.type]);
 
-  // Calculate distance between two points (Haversine formula)
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const a = 
@@ -191,27 +205,27 @@ const SafetyMap = () => {
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Create vector sources
     const hazardSource = new VectorSource();
     const evacSource = new VectorSource();
     const userSource = new VectorSource();
     const routeSource = new VectorSource();
+    const altRouteSource = new VectorSource();
     const routePointsSource = new VectorSource();
 
-    // Create layers
     const hazardLayer = new VectorLayer({ source: hazardSource, zIndex: 10 });
     const evacLayer = new VectorLayer({ source: evacSource, zIndex: 10 });
     const userLayer = new VectorLayer({ source: userSource, zIndex: 15 });
+    const altRouteLayer = new VectorLayer({ source: altRouteSource, zIndex: 4 });
     const routeLayer = new VectorLayer({ source: routeSource, zIndex: 5 });
     const routePointsLayer = new VectorLayer({ source: routePointsSource, zIndex: 20 });
 
     userLayerRef.current = userLayer;
     routeLayerRef.current = routeLayer;
+    altRouteLayerRef.current = altRouteLayer;
     hazardLayerRef.current = hazardLayer;
     evacLayerRef.current = evacLayer;
     routePointsLayerRef.current = routePointsLayer;
 
-    // Create popup overlay host element (OpenLayers will move this element in the DOM)
     const popupEl = document.createElement('div');
     popupEl.className = 'ol-popup bg-background rounded-lg shadow-lg border';
     popupEl.style.position = 'absolute';
@@ -225,11 +239,11 @@ const SafetyMap = () => {
     });
     overlayRef.current = overlay;
 
-    // Create map
     const map = new OLMap({
       target: mapRef.current,
       layers: [
         new TileLayer({ source: new OSM() }),
+        altRouteLayer,
         routeLayer,
         hazardLayer,
         evacLayer,
@@ -254,35 +268,27 @@ const SafetyMap = () => {
     };
   }, []);
 
-  // Handle map click for route selection
+  // Handle map click
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     const handleClick = (evt: any) => {
-      // If in selection mode, set coordinates
       if (selectionMode) {
         const coordinate = toLonLat(evt.coordinate);
         const coords = { lat: coordinate[1], lng: coordinate[0] };
         
         if (selectionMode === 'start') {
           setStartCoords(coords);
-          toast({
-            title: '✅ Start Point Set',
-            description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}`,
-          });
+          toast({ title: '✅ Start Point Set', description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}` });
         } else {
           setEndCoords(coords);
-          toast({
-            title: '✅ Destination Set',
-            description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}`,
-          });
+          toast({ title: '✅ Destination Set', description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}` });
         }
         setSelectionMode(null);
         return;
       }
 
-      // Otherwise show popup via React state (not direct DOM manipulation)
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
       if (feature) {
         const coordinates = (feature.getGeometry() as Point).getCoordinates();
@@ -312,11 +318,7 @@ const SafetyMap = () => {
             position: coordinates,
           });
         } else if (featureType === 'user') {
-          setPopupContent({
-            type: 'user',
-            data: {},
-            position: coordinates,
-          });
+          setPopupContent({ type: 'user', data: {}, position: coordinates });
         }
         
         overlayRef.current?.setPosition(coordinates);
@@ -328,7 +330,6 @@ const SafetyMap = () => {
 
     map.on('click', handleClick);
 
-    // Change cursor based on mode
     const handlePointerMove = (evt: any) => {
       const pixel = map.getEventPixel(evt.originalEvent);
       const hit = map.hasFeatureAtPixel(pixel);
@@ -343,13 +344,11 @@ const SafetyMap = () => {
     };
   }, [selectionMode, toast]);
 
-  // Update hazard markers when data changes (with emoji icons)
+  // Update hazard markers
   useEffect(() => {
     if (!hazardLayerRef.current) return;
-
     const source = hazardLayerRef.current.getSource();
     if (!source) return;
-
     source.clear();
 
     hazards.forEach((hazard) => {
@@ -369,13 +368,11 @@ const SafetyMap = () => {
     });
   }, [hazards]);
 
-  // Update evacuation center markers when data changes
+  // Update evac markers
   useEffect(() => {
     if (!evacLayerRef.current) return;
-
     const source = evacLayerRef.current.getSource();
     if (!source) return;
-
     source.clear();
 
     evacCenters.forEach((center) => {
@@ -398,10 +395,8 @@ const SafetyMap = () => {
   // Update user location marker
   useEffect(() => {
     if (!userLayerRef.current || !mapInstanceRef.current) return;
-
     const source = userLayerRef.current.getSource();
     if (!source) return;
-
     source.clear();
 
     if (userLocation) {
@@ -413,7 +408,6 @@ const SafetyMap = () => {
       feature.setStyle(userStyle);
       source.addFeature(feature);
 
-      // Center map on user location
       mapInstanceRef.current.getView().animate({
         center: fromLonLat([userLocation[1], userLocation[0]]),
         zoom: 14,
@@ -422,38 +416,41 @@ const SafetyMap = () => {
     }
   }, [userLocation]);
 
-  // Update route points and line
+  // Update route points, primary line, and alt line
   useEffect(() => {
-    if (!routePointsLayerRef.current || !routeLayerRef.current) return;
+    if (!routePointsLayerRef.current || !routeLayerRef.current || !altRouteLayerRef.current) return;
 
     const pointsSource = routePointsLayerRef.current.getSource();
     const routeSource = routeLayerRef.current.getSource();
-    if (!pointsSource || !routeSource) return;
+    const altSource = altRouteLayerRef.current.getSource();
+    if (!pointsSource || !routeSource || !altSource) return;
 
     pointsSource.clear();
     routeSource.clear();
+    altSource.clear();
 
-    // Add start marker
     if (startCoords) {
-      const startFeature = new Feature({
-        geometry: new Point(fromLonLat([startCoords.lng, startCoords.lat])),
-      });
+      const startFeature = new Feature({ geometry: new Point(fromLonLat([startCoords.lng, startCoords.lat])) });
       startFeature.setStyle(startPinStyle);
       pointsSource.addFeature(startFeature);
     }
 
-    // Add end marker
     if (endCoords) {
-      const endFeature = new Feature({
-        geometry: new Point(fromLonLat([endCoords.lng, endCoords.lat])),
-      });
+      const endFeature = new Feature({ geometry: new Point(fromLonLat([endCoords.lng, endCoords.lat])) });
       endFeature.setStyle(endPinStyle);
       pointsSource.addFeature(endFeature);
     }
 
-    // Draw route line if both points are set and route is generated
     if (startCoords && endCoords && routeGenerated) {
-      // Use actual road geometry from OSRM, or fallback to straight line
+      // Draw alt route first (behind primary)
+      if (altRouteGeometry && altRouteGeometry.length > 0) {
+        const altCoords = altRouteGeometry.map(coord => fromLonLat(coord));
+        const altFeature = new Feature({ geometry: new LineString(altCoords) });
+        altFeature.setStyle(altRouteStyle);
+        altSource.addFeature(altFeature);
+      }
+
+      // Draw primary route
       let routeCoords: number[][];
       if (routeGeometry && routeGeometry.length > 0) {
         routeCoords = routeGeometry.map(coord => fromLonLat(coord));
@@ -464,13 +461,10 @@ const SafetyMap = () => {
         ];
       }
 
-      const routeFeature = new Feature({
-        geometry: new LineString(routeCoords),
-      });
-      routeFeature.setStyle(routeStyle);
+      const routeFeature = new Feature({ geometry: new LineString(routeCoords) });
+      routeFeature.setStyle(primaryRouteStyle);
       routeSource.addFeature(routeFeature);
 
-      // Fit view to show entire route
       const extent = routeSource.getExtent();
       mapInstanceRef.current?.getView().fit(extent, {
         padding: [60, 60, 60, 60],
@@ -478,7 +472,7 @@ const SafetyMap = () => {
         duration: 500,
       });
     }
-  }, [startCoords, endCoords, routeGenerated, routeGeometry]);
+  }, [startCoords, endCoords, routeGenerated, routeGeometry, altRouteGeometry]);
 
   const handleStartSelection = useCallback((mode: 'start' | 'end') => {
     setSelectionMode(mode);
@@ -492,22 +486,16 @@ const SafetyMap = () => {
 
   const handleGenerateRoute = useCallback(async () => {
     if (!startCoords || !endCoords) {
-      toast({
-        title: 'Missing Points',
-        description: 'Please set both start and destination points',
-        variant: 'destructive',
-      });
+      toast({ title: 'Missing Points', description: 'Please set both start and destination points', variant: 'destructive' });
       return;
     }
 
     setIsGeneratingRoute(true);
 
-    // Calculate distance and estimated time
     const distance = calculateDistance(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
-    const walkingSpeed = 5; // km/h
-    const timeMinutes = Math.round((distance / walkingSpeed) * 60);
+    const motorcycleSpeed = 40; // km/h
+    const timeMinutes = Math.round((distance / motorcycleSpeed) * 60);
 
-    // Check for hazards along route
     const routeBuffer = 0.02;
     const hazardsOnRoute = hazards.filter((hazard) => {
       if (!hazard.latitude || !hazard.longitude) return false;
@@ -533,43 +521,55 @@ const SafetyMap = () => {
         walkingTime: timeMinutes,
       });
 
-      // Store actual road geometry
+      const formattedDirections = aiResponse.directions.map(dir => ({
+        ...dir,
+        distance: dir.distance.startsWith('(') ? dir.distance : `(${dir.distance})`,
+      }));
+
       setRouteGeometry(aiResponse.routeGeometry || null);
+      setAltRouteGeometry(aiResponse.alternativeRoute?.routeGeometry || null);
+
+      const distKm = aiResponse.distance ? (aiResponse.distance / 1000).toFixed(2) + ' km' : (distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`);
+      const durMin = aiResponse.duration ? Math.round(aiResponse.duration / 60) + ' min' : `${timeMinutes} min`;
 
       setRouteInfo({
-        distance: aiResponse.summary?.match(/([\d.]+)\s*km/)?.[0] || (distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`),
-        time: aiResponse.summary?.match(/~?(\d+)\s*min/)?.[0] || (timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`),
+        distance: distKm,
+        time: durMin,
+        hasHazard: aiResponse.hazardStatus !== 'ROUTE_CLEAR',
+        hazardCount: aiResponse.hazardCount || hazardsOnRoute.length,
+        directions: formattedDirections,
+        summary: aiResponse.summary,
+        hazardStatus: aiResponse.hazardStatus,
+        alternativeRoute: aiResponse.alternativeRoute,
+        safetyReminders: aiResponse.safetyReminders,
       });
 
       setRouteGenerated(true);
 
-      if (aiResponse.hazardStatus !== 'ROUTE_CLEAR') {
-        toast({
-          title: '⚠️ Hazard Warning',
-          description: aiResponse.summary || `${hazardsOnRoute.length} hazard(s) detected near your route.`,
-          variant: 'destructive',
-        });
+      if (aiResponse.hazardStatus === 'ROUTE_CLEAR') {
+        toast({ title: '✅ Safe Route Generated', description: 'Route is clear of reported hazards.' });
+      } else if (aiResponse.hazardStatus === 'ALTERNATIVE_ROUTE_USED') {
+        toast({ title: '🔀 Alternative Route Available', description: 'A safer route was selected. Alternative shown as dashed line.' });
       } else {
-        toast({
-          title: '✅ Safe Route Generated',
-          description: 'Route follows actual roads. No known hazards detected.',
-        });
+        toast({ title: '⚠️ Hazard Warning', description: 'No hazard-free route available. Proceed with caution.', variant: 'destructive' });
       }
     } catch (error) {
       console.error('Route generation failed, using fallback:', error);
       
-      // Fallback to straight line
       setRouteGeometry(null);
+      setAltRouteGeometry(null);
+
       setRouteInfo({
         distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`,
         time: timeMinutes < 60 ? `${timeMinutes} min` : `${Math.floor(timeMinutes / 60)}h ${timeMinutes % 60}m`,
+        hasHazard: hazardsOnRoute.length > 0,
+        hazardCount: hazardsOnRoute.length,
+        directions: [],
+        hazardStatus: hazardsOnRoute.length > 0 ? 'HAZARDS_PRESENT_NO_ALTERNATIVE' : 'ROUTE_CLEAR',
       });
-      setRouteGenerated(true);
 
-      toast({
-        title: '📍 Route Generated',
-        description: 'Using estimated route. Road data temporarily unavailable.',
-      });
+      setRouteGenerated(true);
+      toast({ title: '📍 Route Generated', description: 'Using estimated route. Road data temporarily unavailable.' });
     } finally {
       setIsGeneratingRoute(false);
     }
@@ -581,13 +581,32 @@ const SafetyMap = () => {
     setRouteGenerated(false);
     setRouteInfo(null);
     setRouteGeometry(null);
+    setAltRouteGeometry(null);
     setIsSelectingRoute(false);
     setSelectionMode(null);
+    setShowDirectionsPanel(false);
+    setShowAltDirections(false);
   }, []);
 
   const isLoading = hazardsLoading || evacLoading;
-
   const canGenerateRoute = startCoords && endCoords && !routeGenerated;
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'ROUTE_CLEAR':
+        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+      case 'ALTERNATIVE_ROUTE_USED':
+        return { label: 'ALT. ROUTE USED', className: 'bg-blue-500 text-white' };
+      case 'HAZARDS_PRESENT_NO_ALTERNATIVE':
+        return { label: 'HAZARDS PRESENT', className: 'bg-amber-400 text-amber-900' };
+      default:
+        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+    }
+  };
+
+  const activeDirections = showAltDirections && routeInfo?.alternativeRoute
+    ? routeInfo.alternativeRoute.directions
+    : routeInfo?.directions || [];
 
   return (
     <div className="flex flex-col h-full min-h-[600px]">
@@ -658,7 +677,7 @@ const SafetyMap = () => {
                 ) : (
                   <Route className="w-4 h-4 mr-2" />
                 )}
-                {isGeneratingRoute ? 'Generating...' : routeGenerated ? 'Route Generated' : 'Generate Route'}
+                {isGeneratingRoute ? 'Generating...' : routeGenerated ? 'Route Generated' : '🏍️ Generate Route'}
               </Button>
               <Button variant="outline" onClick={handleClearRoute}>
                 <X className="w-4 h-4 mr-1" />
@@ -669,9 +688,9 @@ const SafetyMap = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Map Container with Floating Legend */}
-      <div className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden shadow-lg border min-h-[350px] relative">
-        <div ref={mapRef} className="w-full h-full min-h-[350px]" />
+      {/* Map Container */}
+      <div className="flex-1 mx-4 mb-2 rounded-xl overflow-hidden shadow-lg border min-h-[300px] relative">
+        <div ref={mapRef} className="w-full h-full min-h-[300px]" />
         
         {/* Toggle Legend Button */}
         <Button
@@ -692,59 +711,34 @@ const SafetyMap = () => {
                 <Info className="w-4 h-4" />
                 Legend
               </span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0"
-                onClick={() => setShowLegend(false)}
-              >
-                ×
-              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowLegend(false)}>×</Button>
             </div>
             <div className="space-y-1.5 text-xs">
               <p className="font-medium text-muted-foreground">Hazard Types:</p>
-              <div className="flex items-center gap-2">
-                <span className="text-base">🌊</span>
-                <span>Flood</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-base">⛰️</span>
-                <span>Landslide</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-base">🚧</span>
-                <span>Road Damage</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-base">🚗</span>
-                <span>Road Obstruction</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-base">⚠️</span>
-                <span>Other</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-base">🏠</span>
-                <span>Evac Center ({evacCenters.length})</span>
-              </div>
+              <div className="flex items-center gap-2"><span className="text-base">🌊</span><span>Flood</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">⛰️</span><span>Landslide</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🚧</span><span>Road Damage</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🚗</span><span>Road Obstruction</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">⚠️</span><span>Other</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🏠</span><span>Evac Center ({evacCenters.length})</span></div>
               <div className="border-t border-muted my-2" />
-              <p className="font-medium text-muted-foreground">Severity Colors:</p>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" />
-                <span>Low</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" />
-                <span>Medium</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" />
-                <span>High</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" />
-                <span>Critical</span>
-              </div>
+              <p className="font-medium text-muted-foreground">Severity:</p>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" /><span>Low</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" /><span>Medium</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" /><span>High</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" /><span>Critical</span></div>
+              {routeGenerated && (
+                <>
+                  <div className="border-t border-muted my-2" />
+                  <p className="font-medium text-muted-foreground">Routes:</p>
+                  <div className="flex items-center gap-2"><div className="w-6 h-0.5 bg-blue-500" /><span>Primary (Safest)</span></div>
+                  {altRouteGeometry && (
+                    <div className="flex items-center gap-2"><div className="w-6 h-0.5 border-t-2 border-dashed border-gray-400" /><span>Alternative</span></div>
+                  )}
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span>Start</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span>Destination</span></div>
+                </>
+              )}
             </div>
             {isLoading && (
               <div className="flex items-center gap-1 text-muted-foreground mt-2">
@@ -755,7 +749,7 @@ const SafetyMap = () => {
           </div>
         )}
         
-        {/* Popup UI rendered via portal into the OpenLayers-managed overlay element */}
+        {/* Popup UI */}
         {popupHost &&
           createPortal(
             <div className="text-center p-2">
@@ -765,37 +759,25 @@ const SafetyMap = () => {
                   <br />
                   <strong
                     className={
-                      popupContent.data.severity === 'low'
-                        ? 'text-yellow-500'
-                        : popupContent.data.severity === 'medium'
-                          ? 'text-orange-500'
-                          : popupContent.data.severity === 'high'
-                            ? 'text-red-500'
-                            : 'text-red-700'
+                      popupContent.data.severity === 'low' ? 'text-yellow-500'
+                        : popupContent.data.severity === 'medium' ? 'text-orange-500'
+                        : popupContent.data.severity === 'high' ? 'text-red-500'
+                        : 'text-red-700'
                     }
                   >
                     {popupContent.data.type}
                   </strong>
-                  <p
-                    className={`text-xs capitalize font-semibold ${
-                      popupContent.data.severity === 'low'
-                        ? 'text-yellow-500'
-                        : popupContent.data.severity === 'medium'
-                          ? 'text-orange-500'
-                          : popupContent.data.severity === 'high'
-                            ? 'text-red-500'
-                            : 'text-red-700'
-                    }`}
-                  >
+                  <p className={`text-xs capitalize font-semibold ${
+                    popupContent.data.severity === 'low' ? 'text-yellow-500'
+                      : popupContent.data.severity === 'medium' ? 'text-orange-500'
+                      : popupContent.data.severity === 'high' ? 'text-red-500'
+                      : 'text-red-700'
+                  }`}>
                     Severity: {popupContent.data.severity}
                   </p>
                   <p className="text-xs">{popupContent.data.location}</p>
                   {popupContent.data.photo_url && (
-                    <img 
-                      src={popupContent.data.photo_url} 
-                      alt="Hazard photo" 
-                      className="w-full h-20 object-cover rounded mt-2 border"
-                    />
+                    <img src={popupContent.data.photo_url} alt="Hazard photo" className="w-full h-20 object-cover rounded mt-2 border" />
                   )}
                 </>
               ) : popupContent.type === 'evac' && popupContent.data ? (
@@ -806,8 +788,7 @@ const SafetyMap = () => {
                   const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#10b981';
                   return (
                     <div style={{ textAlign: 'center', minWidth: '160px' }}>
-                      <span style={{ fontSize: '1.5rem' }}>🏠</span>
-                      <br />
+                      <span style={{ fontSize: '1.5rem' }}>🏠</span><br />
                       <strong style={{ color: '#16a34a' }}>{popupContent.data.name}</strong>
                       <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>{popupContent.data.location}</p>
                       <p style={{ fontSize: '0.75rem', fontWeight: 500, marginTop: '4px' }}>Occupancy: {occ} / {cap}</p>
@@ -819,11 +800,7 @@ const SafetyMap = () => {
                   );
                 })()
               ) : popupContent.type === 'user' ? (
-                <>
-                  <span className="text-xl">📍</span>
-                  <br />
-                  <strong>Your Location</strong>
-                </>
+                <><span className="text-xl">📍</span><br /><strong>Your Location</strong></>
               ) : null}
             </div>,
             popupHost
@@ -831,27 +808,130 @@ const SafetyMap = () => {
 
         {/* Route Info Overlay */}
         {routeGenerated && routeInfo && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border z-10 min-w-[280px]">
-            <p className="text-sm font-medium text-center mb-2">🗺️ Route Generated</p>
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="bg-muted/50 rounded-lg p-2">
-                <p className="text-lg font-bold text-primary">{routeInfo.distance}</p>
-                <p className="text-xs text-muted-foreground">Distance</p>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border z-10 min-w-[280px] max-w-[340px]">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Distance</p>
+                  <p className="text-lg font-bold text-primary">{routeInfo.distance}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Est. Time (🏍️)</p>
+                  <p className="text-lg font-bold text-primary">{routeInfo.time}</p>
+                </div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-2">
-                <p className="text-lg font-bold text-primary">{routeInfo.time}</p>
-                <p className="text-xs text-muted-foreground">Est. Time</p>
+              <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide ${getStatusBadge(routeInfo.hazardStatus).className}`}>
+                {getStatusBadge(routeInfo.hazardStatus).label}
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-muted">
-              <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                Stay alert and follow safety protocols
+            {routeInfo.summary && (
+              <p className={`text-xs p-2 rounded mb-1 ${
+                routeInfo.hazardStatus === 'ROUTE_CLEAR' ? 'bg-green-50 text-green-800 border border-green-200'
+                  : routeInfo.hazardStatus === 'ALTERNATIVE_ROUTE_USED' ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+              }`}>
+                {routeInfo.summary}
               </p>
-            </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs mt-1"
+              onClick={() => setShowDirectionsPanel(!showDirectionsPanel)}
+            >
+              {showDirectionsPanel ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
+              {showDirectionsPanel ? 'Hide Details' : 'View Directions & Details'}
+            </Button>
           </div>
         )}
       </div>
+
+      {/* Expandable Directions Panel */}
+      {routeGenerated && routeInfo && showDirectionsPanel && (
+        <div className="mx-4 mb-2 max-h-[40vh] overflow-y-auto">
+          <Card className="border-2">
+            <CardContent className="p-3">
+              {/* Alt Route Toggle */}
+              {routeInfo.alternativeRoute && (
+                <div className="flex gap-2 mb-3">
+                  <Button
+                    variant={!showAltDirections ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => setShowAltDirections(false)}
+                  >
+                    Primary Route
+                  </Button>
+                  <Button
+                    variant={showAltDirections ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => setShowAltDirections(true)}
+                  >
+                    Alternative Route
+                  </Button>
+                </div>
+              )}
+
+              {showAltDirections && routeInfo.alternativeRoute && (
+                <div className="p-2 bg-muted/50 rounded-lg mb-3 text-xs text-muted-foreground">
+                  {routeInfo.alternativeRoute.summary}
+                </div>
+              )}
+
+              {/* Turn-by-turn */}
+              <div className="space-y-1 mb-3 text-xs">
+                {activeDirections.map((dir, idx) => (
+                  <div key={idx} className="flex items-start gap-1">
+                    <span className="text-muted-foreground w-14 flex-shrink-0">
+                      {dir.distance.startsWith('(') ? dir.distance : `(${dir.distance})`}
+                    </span>
+                    <span className={dir.hasHazard ? 'text-amber-600 font-medium' : 'text-foreground'}>
+                      {dir.instruction}
+                      {dir.hasHazard && (
+                        <span className="ml-1 text-[10px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded">
+                          ⚠️ {dir.hazardType}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+
+                {activeDirections.length === 0 && (
+                  <p className="text-muted-foreground italic">Detailed directions unavailable. Follow the route on the map.</p>
+                )}
+              </div>
+
+              {/* Hazard warnings */}
+              {routeInfo.hasHazard && routeInfo.directions.some(d => d.hazardWarning) && (
+                <div className="space-y-1 mb-3">
+                  {routeInfo.directions.filter(d => d.hazardWarning).map((dir, idx) => (
+                    <div key={idx} className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-800">{dir.hazardWarning}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Safety Reminders */}
+              {routeInfo.safetyReminders && routeInfo.safetyReminders.length > 0 && (
+                <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShieldAlert className="w-3 h-3 text-red-600" />
+                    <p className="text-xs font-semibold text-red-800">Safety Reminders</p>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {routeInfo.safetyReminders.map((reminder, idx) => (
+                      <li key={idx} className="text-xs text-red-700">{reminder}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Active Hazards Summary */}
       <div className="px-4 pb-4">
