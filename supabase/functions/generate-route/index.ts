@@ -32,6 +32,20 @@ interface OSRMStep {
   };
 }
 
+interface OSRMRoute {
+  distance: number;
+  duration: number;
+  legs: { steps: OSRMStep[] }[];
+  geometry?: { coordinates: [number, number][] };
+}
+
+const SEVERITY_SCORE: Record<string, number> = {
+  low: 1,
+  medium: 3,
+  high: 7,
+  critical: 15,
+};
+
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
@@ -51,7 +65,7 @@ function formatManeuver(step: OSRMStep): string {
   if (type === 'roundabout') return `At the roundabout, take the exit onto ${streetName}`;
   if (type === 'end of road') return `At the end of the road, turn ${modifier || ''} onto ${streetName}`.trim();
   if (type === 'continue') return `Continue ${modifier ? modifier + ' ' : ''}on ${streetName}`;
-  
+
   return `Continue on ${streetName}`;
 }
 
@@ -64,13 +78,70 @@ function distanceBetween(lat1: number, lng1: number, lat2: number, lng2: number)
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function scoreRoute(route: OSRMRoute, hazards: Hazard[]): { score: number; hazardCount: number; hazardDetails: { type: string; severity: string; dist: number }[] } {
+  if (!hazards || hazards.length === 0) return { score: 0, hazardCount: 0, hazardDetails: [] };
+
+  const geometry = route.geometry?.coordinates || [];
+  const hazardDetails: { type: string; severity: string; dist: number }[] = [];
+  const foundHazards = new Set<number>();
+
+  for (const coord of geometry) {
+    const [lng, lat] = coord;
+    for (let i = 0; i < hazards.length; i++) {
+      if (foundHazards.has(i)) continue;
+      const dist = distanceBetween(lat, lng, hazards[i].lat, hazards[i].lng);
+      if (dist < 200) {
+        foundHazards.add(i);
+        hazardDetails.push({ type: hazards[i].type, severity: hazards[i].severity, dist: Math.round(dist) });
+      }
+    }
+  }
+
+  const score = hazardDetails.reduce((sum, h) => sum + (SEVERITY_SCORE[h.severity] || 3), 0);
+  return { score, hazardCount: hazardDetails.length, hazardDetails };
+}
+
+function buildDirections(steps: OSRMStep[], hazards: Hazard[]) {
+  return steps
+    .filter((step) => step.maneuver.type !== 'arrive' || step.distance > 0)
+    .map((step) => {
+      const instruction = formatManeuver(step);
+      const distance = formatDistance(step.distance);
+      const [lng, lat] = step.maneuver.location;
+
+      let hasHazard = false;
+      let hazardType = '';
+      let hazardWarning = '';
+
+      if (hazards && hazards.length > 0) {
+        for (const h of hazards) {
+          const dist = distanceBetween(lat, lng, h.lat, h.lng);
+          if (dist < 200) {
+            hasHazard = true;
+            hazardType = h.type;
+            hazardWarning = `⚠️ ${h.type} (${h.severity}) reported ${Math.round(dist)}m from this point${h.description ? ': ' + h.description : ''}. Reduce speed and proceed with caution.`;
+            break;
+          }
+        }
+      }
+
+      return {
+        instruction: instruction + '. Keep to the right side of the road.',
+        distance,
+        hasHazard,
+        ...(hasHazard && { hazardType, hazardWarning }),
+      };
+    })
+    .filter((d) => d.distance !== '0 m');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { startCoords, endCoords, hazards, totalDistance, walkingTime } = await req.json() as RouteRequest;
+    const { startCoords, endCoords, hazards } = await req.json() as RouteRequest;
 
     console.log('Generate route request:', { startCoords, endCoords, hazardsCount: hazards?.length });
 
@@ -81,83 +152,113 @@ serve(async (req) => {
       );
     }
 
-    // Step 1: Get real route from OSRM (free, no API key needed)
-    const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${startCoords.lng},${startCoords.lat};${endCoords.lng},${endCoords.lat}?steps=true&overview=full&geometries=geojson`;
-    
+    // Use driving profile (motorcycle) with alternatives
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords.lng},${startCoords.lat};${endCoords.lng},${endCoords.lat}?steps=true&overview=full&geometries=geojson&alternatives=true`;
+
     console.log('Fetching OSRM route:', osrmUrl);
     const osrmResponse = await fetch(osrmUrl);
 
     if (!osrmResponse.ok) {
       console.error('OSRM error:', osrmResponse.status);
-      return fallbackAIRoute(req, startCoords, endCoords, hazards, totalDistance, walkingTime);
+      return fallbackResponse(startCoords, endCoords, hazards);
     }
 
     const osrmData = await osrmResponse.json();
-    
+
     if (osrmData.code !== 'Ok' || !osrmData.routes?.[0]) {
       console.error('OSRM no route found:', osrmData.code);
-      return fallbackAIRoute(req, startCoords, endCoords, hazards, totalDistance, walkingTime);
+      return fallbackResponse(startCoords, endCoords, hazards);
     }
 
-    const route = osrmData.routes[0];
-    const steps: OSRMStep[] = route.legs[0].steps;
+    const routes: OSRMRoute[] = osrmData.routes;
 
-    // Step 2: Convert OSRM steps to our direction format, checking hazards
-    const directions = steps
-      .filter((step) => step.maneuver.type !== 'arrive' || step.distance > 0)
-      .map((step) => {
-        const instruction = formatManeuver(step);
-        const distance = formatDistance(step.distance);
-        const [lng, lat] = step.maneuver.location;
+    // Score all routes by hazard proximity
+    const scored = routes.map((route, idx) => {
+      const { score, hazardCount, hazardDetails } = scoreRoute(route, hazards);
+      return { route, score, hazardCount, hazardDetails, index: idx };
+    });
 
-        // Check if any hazard is within 200m of this step
-        let hasHazard = false;
-        let hazardType = '';
-        let hazardWarning = '';
+    // Sort by score (lowest = safest)
+    scored.sort((a, b) => a.score - b.score);
 
-        if (hazards && hazards.length > 0) {
-          for (const h of hazards) {
-            const dist = distanceBetween(lat, lng, h.lat, h.lng);
-            if (dist < 200) {
-              hasHazard = true;
-              hazardType = h.type;
-              hazardWarning = `⚠️ ${h.type} (${h.severity}) reported ${Math.round(dist)}m from this point${h.description ? ': ' + h.description : ''}. Stay on the right side of the road and proceed with caution.`;
-              break;
-            }
-          }
-        }
+    const primary = scored[0];
+    const alternative = scored.length > 1 ? scored[1] : null;
 
-        return {
-          instruction: instruction + '. Keep to the right side of the road.',
-          distance,
-          hasHazard,
-          ...(hasHazard && { hazardType, hazardWarning }),
-        };
-      })
-      .filter((d) => d.distance !== '0 m'); // Remove zero-distance steps
+    // Build primary route response
+    const primarySteps = primary.route.legs[0].steps;
+    const primaryDirections = buildDirections(primarySteps, hazards);
+    const primaryDistKm = (primary.route.distance / 1000).toFixed(2);
+    const primaryTimeMin = Math.round(primary.route.duration / 60);
+    const primaryGeometry = primary.route.geometry?.coordinates?.map((c: [number, number]) => [c[0], c[1]]) || [];
 
-    const hasAnyHazard = directions.some((d) => d.hasHazard);
-    const routeDistanceKm = (route.distance / 1000).toFixed(2);
-    const routeTimeMin = Math.round(route.duration / 60);
+    // Determine route status
+    let routeStatus: string;
+    let summary: string;
 
-    const summary = hasAnyHazard
-      ? `Route is ${routeDistanceKm} km (~${routeTimeMin} min walk). ⚠️ Hazards detected along the route. Follow right-hand traffic rules and proceed with caution near flagged areas.`
-      : `Route is ${routeDistanceKm} km (~${routeTimeMin} min walk). Route is clear of reported hazards. Stay on the right side of the road.`;
+    if (primary.hazardCount === 0) {
+      routeStatus = 'ROUTE_CLEAR';
+      summary = `Route is ${primaryDistKm} km (~${primaryTimeMin} min by motorcycle). Route is clear of reported hazards.`;
+    } else if (alternative && alternative.score < primary.score) {
+      // This shouldn't happen since we sorted, but just in case
+      routeStatus = 'ALTERNATIVE_ROUTE_USED';
+      summary = `A safer alternative route was selected to avoid hazards. Distance: ${primaryDistKm} km (~${primaryTimeMin} min).`;
+    } else if (alternative) {
+      routeStatus = 'ALTERNATIVE_ROUTE_USED';
+      summary = `Route is ${primaryDistKm} km (~${primaryTimeMin} min). Primary route selected as safest option. An alternative route is also available.`;
+    } else {
+      routeStatus = 'HAZARDS_PRESENT_NO_ALTERNATIVE';
+      summary = `No hazard-free route available. Route is ${primaryDistKm} km (~${primaryTimeMin} min). Proceed with caution.`;
+    }
 
-    // Extract the actual road geometry from OSRM response
-    const routeGeometry = route.geometry?.coordinates?.map((coord: [number, number]) => [coord[0], coord[1]]) || [];
+    // If primary has hazards but is the only/best option
+    if (primary.hazardCount > 0 && !alternative) {
+      routeStatus = 'HAZARDS_PRESENT_NO_ALTERNATIVE';
+      summary = `No hazard-free route available. Route is ${primaryDistKm} km (~${primaryTimeMin} min). Proceed with caution.`;
+    }
 
-    const routeData = {
-      directions,
+    const responseData: Record<string, unknown> = {
+      directions: primaryDirections,
       summary,
-      hazardStatus: hasAnyHazard ? 'HAZARDS_PRESENT' : 'ROUTE_CLEAR',
-      routeGeometry,
+      hazardStatus: routeStatus,
+      routeGeometry: primaryGeometry,
+      distance: primary.route.distance,
+      duration: primary.route.duration,
+      hazardCount: primary.hazardCount,
     };
 
-    console.log('Route generated with', directions.length, 'steps from real OSRM data');
+    // Build alternative route if available
+    if (alternative) {
+      const altSteps = alternative.route.legs[0].steps;
+      const altDirections = buildDirections(altSteps, hazards);
+      const altDistKm = (alternative.route.distance / 1000).toFixed(2);
+      const altTimeMin = Math.round(alternative.route.duration / 60);
+      const altGeometry = alternative.route.geometry?.coordinates?.map((c: [number, number]) => [c[0], c[1]]) || [];
+
+      responseData.alternativeRoute = {
+        directions: altDirections,
+        summary: `Alternative route: ${altDistKm} km (~${altTimeMin} min). ${alternative.hazardCount > 0 ? alternative.hazardCount + ' hazard(s) detected.' : 'Clear of hazards.'}`,
+        routeGeometry: altGeometry,
+        distance: alternative.route.distance,
+        duration: alternative.route.duration,
+        hazardCount: alternative.hazardCount,
+      };
+    }
+
+    // Add safety reminders if hazards present
+    if (primary.hazardCount > 0) {
+      responseData.safetyReminders = [
+        'Proceed with caution near hazard areas.',
+        'Avoid flooded or damaged roads.',
+        'Reduce speed and stay alert.',
+        'Stop travel if conditions worsen.',
+        'Proceed to nearest evacuation center if necessary.',
+      ];
+    }
+
+    console.log('Route generated:', scored.length, 'routes evaluated. Primary score:', primary.score, 'Alt score:', alternative?.score);
 
     return new Response(
-      JSON.stringify(routeData),
+      JSON.stringify(responseData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
@@ -170,99 +271,23 @@ serve(async (req) => {
   }
 });
 
-// Fallback to AI-generated route if OSRM fails
-async function fallbackAIRoute(
-  _req: Request,
+function fallbackResponse(
   startCoords: { lat: number; lng: number },
   endCoords: { lat: number; lng: number },
-  hazards: Hazard[],
-  totalDistance: number,
-  walkingTime: number
+  hazards: Hazard[]
 ) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: 'AI service not configured', fallback: true }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  const dist = distanceBetween(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng);
+  const distKm = (dist / 1000).toFixed(2);
+  const timeMin = Math.round(dist / 1000 / 40 * 60); // ~40km/h motorcycle
 
-  const hazardsList = hazards && hazards.length > 0
-    ? hazards.map((h, i) =>
-        `${i + 1}. ${h.type} (${h.severity}) at (${h.lat.toFixed(4)}, ${h.lng.toFixed(4)})${h.description ? ': ' + h.description : ''}`
-      ).join('\n')
-    : 'No active hazards reported.';
-
-  const systemPrompt = `You are a navigation assistant for Naval, Biliran, Philippines. Generate realistic walking directions using REAL street names. The Philippines follows right-hand traffic — always instruct pedestrians to stay on the right side. Key streets: Biliran Circumferential Road, Caneja Street, Rizal Avenue, Castin Street, P. Zamora Street, Vicentillo Street, Naval-Caibiran Road. Generate 4-8 steps.`;
-
-  const userPrompt = `Directions from (${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}) to (${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}). Distance: ${totalDistance.toFixed(2)} km, ~${walkingTime} min. Hazards:\n${hazardsList}`;
-
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      tools: [{
-        type: "function",
-        function: {
-          name: "generate_route_directions",
-          description: "Generate walking directions",
-          parameters: {
-            type: "object",
-            properties: {
-              directions: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    instruction: { type: "string" },
-                    distance: { type: "string" },
-                    hasHazard: { type: "boolean" },
-                    hazardType: { type: "string" },
-                    hazardWarning: { type: "string" }
-                  },
-                  required: ["instruction", "distance", "hasHazard"],
-                  additionalProperties: false
-                }
-              },
-              summary: { type: "string" },
-              hazardStatus: { type: "string", enum: ["HAZARDS_PRESENT", "ROUTE_CLEAR"] }
-            },
-            required: ["directions", "hazardStatus"],
-            additionalProperties: false
-          }
-        }
-      }],
-      tool_choice: { type: "function", function: { name: "generate_route_directions" } }
-    }),
-  });
-
-  if (!response.ok) {
-    return new Response(
-      JSON.stringify({ error: 'AI service error', fallback: true }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  const aiResponse = await response.json();
-  const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid AI response', fallback: true }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  const routeData = JSON.parse(toolCall.function.arguments);
   return new Response(
-    JSON.stringify(routeData),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    JSON.stringify({
+      error: 'OSRM unavailable',
+      fallback: true,
+      distance: dist,
+      duration: timeMin * 60,
+      summary: `Estimated ${distKm} km (~${timeMin} min). Route data temporarily unavailable.`,
+    }),
+    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
