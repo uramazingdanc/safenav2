@@ -735,8 +735,8 @@ const SafetyMap = () => {
                   {altRouteGeometry && (
                     <div className="flex items-center gap-2"><div className="w-6 h-0.5 border-t-2 border-dashed border-gray-400" /><span>{t.alternative}</span></div>
                   )}
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span>Start</span></div>
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span>Destination</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span>{t.start}</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span>{t.destination}</span></div>
                 </>
               )}
             </div>
