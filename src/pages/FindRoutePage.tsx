@@ -812,10 +812,10 @@ const FindRoutePage = () => {
 
               <TabsContent value="evac" className="mt-3">
                 <Select value={selectedEvac} onValueChange={handleSelectEvac}>
-                  <SelectTrigger><SelectValue placeholder="Choose an evacuation center" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.chooseEvacCenter} /></SelectTrigger>
                   <SelectContent>
                     {evacCenters.length === 0 ? (
-                      <SelectItem value="none" disabled>No evacuation centers available</SelectItem>
+                      <SelectItem value="none" disabled>{t.noEvacAvailable}</SelectItem>
                     ) : (
                       evacCenters.map((center) => (
                         <SelectItem key={center.id} value={center.id}>🏠 {center.name} - {center.location}</SelectItem>
