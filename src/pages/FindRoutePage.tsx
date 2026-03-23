@@ -754,7 +754,7 @@ const FindRoutePage = () => {
 
               <TabsContent value="map" className="mt-3">
                 <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50" onClick={() => openPicker('start')}>
-                  <MapPin className="w-4 h-4 mr-2" />📍 Pin Start on Map
+                  <MapPin className="w-4 h-4 mr-2" />{t.pinStartOnMap}
                 </Button>
               </TabsContent>
 
