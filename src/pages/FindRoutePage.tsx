@@ -839,7 +839,7 @@ const FindRoutePage = () => {
 
         {!canGenerate && (
           <p className="text-sm text-muted-foreground text-center">
-            Please set both start and destination points to generate a route
+            {t.setBothPoints}
           </p>
         )}
       </div>

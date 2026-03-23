@@ -34,7 +34,7 @@ const DesktopSidebar = () => {
           </div>
           <div>
             <h1 className="font-bold text-lg">SafeNav</h1>
-            <p className="text-xs text-sidebar-foreground/70">Guardian Portal</p>
+            <p className="text-xs text-sidebar-foreground/70">{t.guardianPortal}</p>
           </div>
         </div>
       </div>
