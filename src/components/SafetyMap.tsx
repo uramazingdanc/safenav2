@@ -811,12 +811,12 @@ const SafetyMap = () => {
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border z-10 min-w-[280px] max-w-[340px]">
             <div className="flex items-start justify-between mb-2">
               <div className="flex gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Distance</p>
+              <div>
+                  <p className="text-xs text-muted-foreground">{t.distance}</p>
                   <p className="text-lg font-bold text-primary">{routeInfo.distance}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Est. Time (🏍️)</p>
+                  <p className="text-xs text-muted-foreground">{t.estTime} (🏍️)</p>
                   <p className="text-lg font-bold text-primary">{routeInfo.time}</p>
                 </div>
               </div>
