@@ -831,9 +831,9 @@ const FindRoutePage = () => {
         {/* Generate Route Button */}
         <Button className="w-full h-12 text-base" disabled={!canGenerate || isGeneratingRoute} onClick={handleGenerateRoute}>
           {isGeneratingRoute ? (
-            <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generating Route...</>
+            <><Loader2 className="w-5 h-5 mr-2 animate-spin" />{t.generatingRoute}</>
           ) : (
-            <><Navigation className="w-5 h-5 mr-2" />🏍️ Generate Safe Route</>
+            <><Navigation className="w-5 h-5 mr-2" />{t.generateSafeRouteBtn}</>
           )}
         </Button>
 
