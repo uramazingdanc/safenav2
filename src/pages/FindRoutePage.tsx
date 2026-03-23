@@ -748,8 +748,8 @@ const FindRoutePage = () => {
 
             <Tabs value={startInputMode} onValueChange={(v) => setStartInputMode(v as 'map' | 'coords')}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />Pick on Map</TabsTrigger>
-                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />Coordinates</TabsTrigger>
+                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />{t.pickOnMap}</TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />{t.coordinates}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="map" className="mt-3">
