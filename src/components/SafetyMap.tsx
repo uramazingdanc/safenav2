@@ -543,7 +543,7 @@ const SafetyMap = () => {
 
       setRouteGenerated(true);
 
-      if (aiResponse.hazardStatus === 'HAZARDS_PRESENT') {
+      if (aiResponse.hazardStatus !== 'ROUTE_CLEAR') {
         toast({
           title: '⚠️ Hazard Warning',
           description: aiResponse.summary || `${hazardsOnRoute.length} hazard(s) detected near your route.`,
