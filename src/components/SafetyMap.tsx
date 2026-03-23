@@ -677,11 +677,11 @@ const SafetyMap = () => {
                 ) : (
                   <Route className="w-4 h-4 mr-2" />
                 )}
-                {isGeneratingRoute ? 'Generating...' : routeGenerated ? 'Route Generated' : '🏍️ Generate Route'}
+                {isGeneratingRoute ? t.generating : routeGenerated ? t.routeGenerated : `🏍️ ${t.generateRoute}`}
               </Button>
               <Button variant="outline" onClick={handleClearRoute}>
                 <X className="w-4 h-4 mr-1" />
-                Clear
+                {t.clear}
               </Button>
             </div>
           )}
