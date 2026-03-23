@@ -58,8 +58,8 @@ const UserDashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 pb-6">
-        <h1 className="text-xl font-bold">Welcome, {profile?.full_name?.split(' ')[0] || 'User'}!</h1>
-        <p className="text-sm text-primary-foreground/80">Stay informed about hazards and emergencies in your area</p>
+        <h1 className="text-xl font-bold">{t.welcomeUser}, {profile?.full_name?.split(' ')[0] || 'User'}!</h1>
+        <p className="text-sm text-primary-foreground/80">{t.stayInformed}</p>
       </div>
 
       <div className="p-4 space-y-6 -mt-2">
@@ -89,8 +89,8 @@ const UserDashboard = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Your Barangay</p>
-                <p className="font-semibold text-primary">{profile?.barangay || 'Not set'}</p>
+                <p className="text-xs text-muted-foreground">{t.yourBarangay}</p>
+                <p className="font-semibold text-primary">{profile?.barangay || t.notSet}</p>
               </div>
               <Button 
                 variant="default" 
@@ -98,7 +98,7 @@ const UserDashboard = () => {
                 className="bg-primary hover:bg-primary/90"
                 onClick={() => navigate('/map')}
               >
-                View Map
+                {t.viewMap}
               </Button>
             </div>
           </CardContent>
@@ -107,14 +107,14 @@ const UserDashboard = () => {
         {/* Emergency Contacts Section */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-primary">Emergency Contacts</h2>
+            <h2 className="text-lg font-semibold text-primary">{t.emergencyContacts}</h2>
             <Button 
               variant="link" 
               size="sm" 
               className="text-primary p-0 h-auto"
               onClick={() => navigate('/hotlines')}
             >
-              View All
+              {t.viewAll}
             </Button>
           </div>
 
@@ -122,7 +122,7 @@ const UserDashboard = () => {
             <CardContent className="p-0">
               {/* Emergency Services */}
               <div className="p-3 border-b border-border">
-                <h3 className="text-sm font-semibold text-primary mb-2">Emergency Services</h3>
+                <h3 className="text-sm font-semibold text-primary mb-2">{t.emergencyServices}</h3>
                 <div className="space-y-1">
                   {emergencyServices.map((service) => (
                     <div
@@ -133,7 +133,7 @@ const UserDashboard = () => {
                       <span className="text-sm text-primary font-medium">{service.name}</span>
                       <Button variant="ghost" size="sm" className="h-7 gap-1 text-muted-foreground">
                         <Phone className="w-3 h-3" />
-                        Call
+                        {t.call}
                       </Button>
                     </div>
                   ))}
@@ -142,7 +142,7 @@ const UserDashboard = () => {
 
               {/* National Hotlines */}
               <div className="p-3">
-                <h3 className="text-sm font-semibold text-primary mb-2">National Hotlines</h3>
+                <h3 className="text-sm font-semibold text-primary mb-2">{t.nationalHotlines}</h3>
                 <div className="space-y-1">
                   {nationalHotlines.map((hotline) => (
                     <div
