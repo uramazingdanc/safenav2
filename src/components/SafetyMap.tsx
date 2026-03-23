@@ -709,31 +709,31 @@ const SafetyMap = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold flex items-center gap-1">
                 <Info className="w-4 h-4" />
-                Legend
+                {t.legend}
               </span>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowLegend(false)}>×</Button>
             </div>
             <div className="space-y-1.5 text-xs">
-              <p className="font-medium text-muted-foreground">Hazard Types:</p>
-              <div className="flex items-center gap-2"><span className="text-base">🌊</span><span>Flood</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">⛰️</span><span>Landslide</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">🚧</span><span>Road Damage</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">🚗</span><span>Road Obstruction</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">⚠️</span><span>Other</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">🏠</span><span>Evac Center ({evacCenters.length})</span></div>
+              <p className="font-medium text-muted-foreground">{t.hazardTypes}:</p>
+              <div className="flex items-center gap-2"><span className="text-base">🌊</span><span>{t.floodLabel}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">⛰️</span><span>{t.landslideLabel}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🚧</span><span>{t.roadDamage}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🚗</span><span>{t.roadObstruction}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">⚠️</span><span>{t.other}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🏠</span><span>{t.evacCenter} ({evacCenters.length})</span></div>
               <div className="border-t border-muted my-2" />
-              <p className="font-medium text-muted-foreground">Severity:</p>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" /><span>Low</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" /><span>Medium</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" /><span>High</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" /><span>Critical</span></div>
+              <p className="font-medium text-muted-foreground">{t.severityLabel}:</p>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" /><span>{t.low}</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" /><span>{t.medium}</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" /><span>{t.high}</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" /><span>{t.critical}</span></div>
               {routeGenerated && (
                 <>
                   <div className="border-t border-muted my-2" />
-                  <p className="font-medium text-muted-foreground">Routes:</p>
-                  <div className="flex items-center gap-2"><div className="w-6 h-0.5 bg-blue-500" /><span>Primary (Safest)</span></div>
+                  <p className="font-medium text-muted-foreground">{t.routes}:</p>
+                  <div className="flex items-center gap-2"><div className="w-6 h-0.5 bg-blue-500" /><span>{t.primarySafest}</span></div>
                   {altRouteGeometry && (
-                    <div className="flex items-center gap-2"><div className="w-6 h-0.5 border-t-2 border-dashed border-gray-400" /><span>Alternative</span></div>
+                    <div className="flex items-center gap-2"><div className="w-6 h-0.5 border-t-2 border-dashed border-gray-400" /><span>{t.alternative}</span></div>
                   )}
                   <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span>Start</span></div>
                   <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span>Destination</span></div>
