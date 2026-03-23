@@ -774,7 +774,7 @@ const FindRoutePage = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500" />
-              Destination
+              {t.destination}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
