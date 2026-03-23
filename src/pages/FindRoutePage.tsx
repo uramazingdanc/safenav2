@@ -742,7 +742,7 @@ const FindRoutePage = () => {
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[48px]">
               <MapPin className="w-5 h-5 text-green-500 flex-shrink-0" />
               <span className="text-sm flex-1">
-                {startCoords ? `${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}` : 'Not set'}
+                {startCoords ? `${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}` : t.notSet}
               </span>
             </div>
 
