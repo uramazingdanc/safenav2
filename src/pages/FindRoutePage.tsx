@@ -622,7 +622,7 @@ const FindRoutePage = () => {
                     className="flex-1"
                     onClick={() => setShowAltDirections(false)}
                   >
-                    Primary Route
+                    {t.primaryRoute}
                   </Button>
                   <Button
                     variant={showAltDirections ? 'default' : 'outline'}
@@ -630,7 +630,7 @@ const FindRoutePage = () => {
                     className="flex-1"
                     onClick={() => setShowAltDirections(true)}
                   >
-                    Alternative Route
+                    {t.alternativeRoute}
                   </Button>
                 </div>
               )}
