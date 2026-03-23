@@ -587,12 +587,12 @@ const FindRoutePage = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-6">
                   <div>
-                    <p className="text-xs text-muted-foreground">Distance:</p>
-                    <p className="text-xl font-bold text-foreground">{routeInfo.distance}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Est. Time (🏍️):</p>
-                    <p className="text-xl font-bold text-foreground">{routeInfo.time}</p>
+                     <p className="text-xs text-muted-foreground">{t.distance}:</p>
+                     <p className="text-xl font-bold text-foreground">{routeInfo.distance}</p>
+                   </div>
+                   <div>
+                     <p className="text-xs text-muted-foreground">{t.estTime} (🏍️):</p>
+                     <p className="text-xl font-bold text-foreground">{routeInfo.time}</p>
                   </div>
                 </div>
                 <div className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide ${badge.className}`}>
