@@ -615,10 +615,10 @@ const SafetyMap = () => {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="map" className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            Hazard Map
+            {t.hazardMap}
           </TabsTrigger>
           <TabsTrigger value="weather" className="flex items-center gap-2">
-            ☁️ Weather
+            ☁️ {t.weather}
           </TabsTrigger>
         </TabsList>
 
