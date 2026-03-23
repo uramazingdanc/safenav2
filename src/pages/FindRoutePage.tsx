@@ -687,7 +687,7 @@ const FindRoutePage = () => {
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <ShieldAlert className="w-4 h-4 text-red-600" />
-                    <p className="text-sm font-semibold text-red-800">Safety Reminders</p>
+                    <p className="text-sm font-semibold text-red-800">{t.safetyReminders}</p>
                   </div>
                   <ul className="list-disc pl-5 space-y-1">
                     {routeInfo.safetyReminders.map((reminder, idx) => (
