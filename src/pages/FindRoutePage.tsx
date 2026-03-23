@@ -804,10 +804,10 @@ const FindRoutePage = () => {
 
               <TabsContent value="coords" className="mt-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">Latitude</Label><Input type="number" step="any" placeholder="11.5601" value={endLatInput} onChange={(e) => setEndLatInput(e.target.value)} /></div>
-                  <div><Label className="text-xs">Longitude</Label><Input type="number" step="any" placeholder="124.3949" value={endLngInput} onChange={(e) => setEndLngInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">{t.latitude}</Label><Input type="number" step="any" placeholder="11.5601" value={endLatInput} onChange={(e) => setEndLatInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">{t.longitude}</Label><Input type="number" step="any" placeholder="124.3949" value={endLngInput} onChange={(e) => setEndLngInput(e.target.value)} /></div>
                 </div>
-                <Button variant="outline" className="w-full" onClick={handleSetEndCoords}>Set Coordinates</Button>
+                <Button variant="outline" className="w-full" onClick={handleSetEndCoords}>{t.setCoordinates}</Button>
               </TabsContent>
 
               <TabsContent value="evac" className="mt-3">
