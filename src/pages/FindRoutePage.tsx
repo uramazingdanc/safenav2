@@ -724,8 +724,8 @@ const FindRoutePage = () => {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-xl font-bold">Plan Safe Route</h1>
-          <p className="text-sm text-primary-foreground/80">Motorcycle-based routing with hazard avoidance</p>
+          <h1 className="text-xl font-bold">{t.planSafeRoute}</h1>
+          <p className="text-sm text-primary-foreground/80">{t.motorcycleRouting}</p>
         </div>
       </div>
 
