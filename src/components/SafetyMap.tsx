@@ -840,7 +840,7 @@ const SafetyMap = () => {
               onClick={() => setShowDirectionsPanel(!showDirectionsPanel)}
             >
               {showDirectionsPanel ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
-              {showDirectionsPanel ? 'Hide Details' : 'View Directions & Details'}
+              {showDirectionsPanel ? t.hideDetails : t.viewDirections}
             </Button>
           </div>
         )}
