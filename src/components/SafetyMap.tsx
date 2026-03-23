@@ -655,7 +655,7 @@ const SafetyMap = () => {
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${selectionMode === 'start' ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span className="text-sm font-medium">
-                  Tap map to set {selectionMode === 'start' ? 'START' : 'DESTINATION'}
+                  {selectionMode === 'start' ? t.tapToSetStart : t.tapToSetEnd}
                 </span>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setSelectionMode(null)}>
