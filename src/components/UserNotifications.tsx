@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { formatDistanceToNow } from "date-fns";
 
 interface UserNotification {
@@ -29,6 +30,7 @@ const ALLOWED_USER_NOTIFICATION_TYPES = [
 
 const UserNotifications = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
@@ -147,7 +149,7 @@ const UserNotifications = () => {
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Bell className="h-4 w-4 text-primary" />
-            Notifications
+            {t.notifications}
             {unreadCount > 0 && (
               <Badge variant="destructive" className="px-1.5 py-0 text-xs">
                 {unreadCount}

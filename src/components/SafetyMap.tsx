@@ -615,10 +615,10 @@ const SafetyMap = () => {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="map" className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            Hazard Map
+            {t.hazardMap}
           </TabsTrigger>
           <TabsTrigger value="weather" className="flex items-center gap-2">
-            ☁️ Weather
+            ☁️ {t.weather}
           </TabsTrigger>
         </TabsList>
 
@@ -636,7 +636,7 @@ const SafetyMap = () => {
               onClick={() => handleStartSelection('start')}
             >
               <MapPin className="w-4 h-4 mr-1" />
-              {startCoords ? '✓ Start Set' : 'Pin Start'}
+              {startCoords ? t.startSet : t.pinStart}
             </Button>
             <Button 
               variant={selectionMode === 'end' ? 'default' : 'outline'} 
@@ -645,7 +645,7 @@ const SafetyMap = () => {
               onClick={() => handleStartSelection('end')}
             >
               <Navigation className="w-4 h-4 mr-1" />
-              {endCoords ? '✓ End Set' : 'Pin End'}
+              {endCoords ? t.endSet : t.pinEnd}
             </Button>
           </div>
 
@@ -655,7 +655,7 @@ const SafetyMap = () => {
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${selectionMode === 'start' ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span className="text-sm font-medium">
-                  Tap map to set {selectionMode === 'start' ? 'START' : 'DESTINATION'}
+                  {selectionMode === 'start' ? t.tapToSetStart : t.tapToSetEnd}
                 </span>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setSelectionMode(null)}>
@@ -677,11 +677,11 @@ const SafetyMap = () => {
                 ) : (
                   <Route className="w-4 h-4 mr-2" />
                 )}
-                {isGeneratingRoute ? 'Generating...' : routeGenerated ? 'Route Generated' : '🏍️ Generate Route'}
+                {isGeneratingRoute ? t.generating : routeGenerated ? t.routeGenerated : `🏍️ ${t.generateRoute}`}
               </Button>
               <Button variant="outline" onClick={handleClearRoute}>
                 <X className="w-4 h-4 mr-1" />
-                Clear
+                {t.clear}
               </Button>
             </div>
           )}
@@ -700,7 +700,7 @@ const SafetyMap = () => {
           onClick={() => setShowLegend(!showLegend)}
         >
           {showLegend ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-          {showLegend ? 'Hide' : 'Show'} Legend
+          {showLegend ? t.hideLegend : t.showLegend}
         </Button>
 
         {/* Floating Legend */}
@@ -709,34 +709,34 @@ const SafetyMap = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold flex items-center gap-1">
                 <Info className="w-4 h-4" />
-                Legend
+                {t.legend}
               </span>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowLegend(false)}>×</Button>
             </div>
             <div className="space-y-1.5 text-xs">
-              <p className="font-medium text-muted-foreground">Hazard Types:</p>
-              <div className="flex items-center gap-2"><span className="text-base">🌊</span><span>Flood</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">⛰️</span><span>Landslide</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">🚧</span><span>Road Damage</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">🚗</span><span>Road Obstruction</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">⚠️</span><span>Other</span></div>
-              <div className="flex items-center gap-2"><span className="text-base">🏠</span><span>Evac Center ({evacCenters.length})</span></div>
+              <p className="font-medium text-muted-foreground">{t.hazardTypes}:</p>
+              <div className="flex items-center gap-2"><span className="text-base">🌊</span><span>{t.floodLabel}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">⛰️</span><span>{t.landslideLabel}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🚧</span><span>{t.roadDamage}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🚗</span><span>{t.roadObstruction}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">⚠️</span><span>{t.other}</span></div>
+              <div className="flex items-center gap-2"><span className="text-base">🏠</span><span>{t.evacCenter} ({evacCenters.length})</span></div>
               <div className="border-t border-muted my-2" />
-              <p className="font-medium text-muted-foreground">Severity:</p>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" /><span>Low</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" /><span>Medium</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" /><span>High</span></div>
-              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" /><span>Critical</span></div>
+              <p className="font-medium text-muted-foreground">{t.severityLabel}:</p>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white shadow" /><span>{t.low}</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-500 border-2 border-white shadow" /><span>{t.medium}</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow" /><span>{t.high}</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-800 border-2 border-white shadow" /><span>{t.critical}</span></div>
               {routeGenerated && (
                 <>
                   <div className="border-t border-muted my-2" />
-                  <p className="font-medium text-muted-foreground">Routes:</p>
-                  <div className="flex items-center gap-2"><div className="w-6 h-0.5 bg-blue-500" /><span>Primary (Safest)</span></div>
+                  <p className="font-medium text-muted-foreground">{t.routes}:</p>
+                  <div className="flex items-center gap-2"><div className="w-6 h-0.5 bg-blue-500" /><span>{t.primarySafest}</span></div>
                   {altRouteGeometry && (
-                    <div className="flex items-center gap-2"><div className="w-6 h-0.5 border-t-2 border-dashed border-gray-400" /><span>Alternative</span></div>
+                    <div className="flex items-center gap-2"><div className="w-6 h-0.5 border-t-2 border-dashed border-gray-400" /><span>{t.alternative}</span></div>
                   )}
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span>Start</span></div>
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span>Destination</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span>{t.start}</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span>{t.destination}</span></div>
                 </>
               )}
             </div>
@@ -811,12 +811,12 @@ const SafetyMap = () => {
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border z-10 min-w-[280px] max-w-[340px]">
             <div className="flex items-start justify-between mb-2">
               <div className="flex gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Distance</p>
+              <div>
+                  <p className="text-xs text-muted-foreground">{t.distance}</p>
                   <p className="text-lg font-bold text-primary">{routeInfo.distance}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Est. Time (🏍️)</p>
+                  <p className="text-xs text-muted-foreground">{t.estTime} (🏍️)</p>
                   <p className="text-lg font-bold text-primary">{routeInfo.time}</p>
                 </div>
               </div>
@@ -840,7 +840,7 @@ const SafetyMap = () => {
               onClick={() => setShowDirectionsPanel(!showDirectionsPanel)}
             >
               {showDirectionsPanel ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
-              {showDirectionsPanel ? 'Hide Details' : 'View Directions & Details'}
+              {showDirectionsPanel ? t.hideDetails : t.viewDirections}
             </Button>
           </div>
         )}
@@ -860,7 +860,7 @@ const SafetyMap = () => {
                     className="flex-1 text-xs"
                     onClick={() => setShowAltDirections(false)}
                   >
-                    Primary Route
+                    {t.primaryRoute}
                   </Button>
                   <Button
                     variant={showAltDirections ? 'default' : 'outline'}
@@ -868,7 +868,7 @@ const SafetyMap = () => {
                     className="flex-1 text-xs"
                     onClick={() => setShowAltDirections(true)}
                   >
-                    Alternative Route
+                    {t.alternativeRoute}
                   </Button>
                 </div>
               )}
@@ -919,7 +919,7 @@ const SafetyMap = () => {
                 <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-1">
                     <ShieldAlert className="w-3 h-3 text-red-600" />
-                    <p className="text-xs font-semibold text-red-800">Safety Reminders</p>
+                    <p className="text-xs font-semibold text-red-800">{t.safetyReminders}</p>
                   </div>
                   <ul className="list-disc pl-4 space-y-0.5">
                     {routeInfo.safetyReminders.map((reminder, idx) => (

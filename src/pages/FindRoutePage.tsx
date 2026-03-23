@@ -508,13 +508,13 @@ const FindRoutePage = () => {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'ROUTE_CLEAR':
-        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+        return { label: t.routeClear, className: 'bg-green-500 text-white' };
       case 'ALTERNATIVE_ROUTE_USED':
-        return { label: 'ALT. ROUTE USED', className: 'bg-blue-500 text-white' };
+        return { label: t.altRouteUsed, className: 'bg-blue-500 text-white' };
       case 'HAZARDS_PRESENT_NO_ALTERNATIVE':
-        return { label: 'HAZARDS PRESENT', className: 'bg-amber-400 text-amber-900' };
+        return { label: t.hazardsPresent, className: 'bg-amber-400 text-amber-900' };
       default:
-        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+        return { label: t.routeClear, className: 'bg-green-500 text-white' };
     }
   };
 
@@ -587,12 +587,12 @@ const FindRoutePage = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-6">
                   <div>
-                    <p className="text-xs text-muted-foreground">Distance:</p>
-                    <p className="text-xl font-bold text-foreground">{routeInfo.distance}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Est. Time (🏍️):</p>
-                    <p className="text-xl font-bold text-foreground">{routeInfo.time}</p>
+                     <p className="text-xs text-muted-foreground">{t.distance}:</p>
+                     <p className="text-xl font-bold text-foreground">{routeInfo.distance}</p>
+                   </div>
+                   <div>
+                     <p className="text-xs text-muted-foreground">{t.estTime} (🏍️):</p>
+                     <p className="text-xl font-bold text-foreground">{routeInfo.time}</p>
                   </div>
                 </div>
                 <div className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide ${badge.className}`}>
@@ -622,7 +622,7 @@ const FindRoutePage = () => {
                     className="flex-1"
                     onClick={() => setShowAltDirections(false)}
                   >
-                    Primary Route
+                    {t.primaryRoute}
                   </Button>
                   <Button
                     variant={showAltDirections ? 'default' : 'outline'}
@@ -630,7 +630,7 @@ const FindRoutePage = () => {
                     className="flex-1"
                     onClick={() => setShowAltDirections(true)}
                   >
-                    Alternative Route
+                    {t.alternativeRoute}
                   </Button>
                 </div>
               )}
@@ -687,7 +687,7 @@ const FindRoutePage = () => {
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <ShieldAlert className="w-4 h-4 text-red-600" />
-                    <p className="text-sm font-semibold text-red-800">Safety Reminders</p>
+                    <p className="text-sm font-semibold text-red-800">{t.safetyReminders}</p>
                   </div>
                   <ul className="list-disc pl-5 space-y-1">
                     {routeInfo.safetyReminders.map((reminder, idx) => (
@@ -709,7 +709,7 @@ const FindRoutePage = () => {
         <div className="p-3 bg-background border-t">
           <Button onClick={handleReset} variant="outline" className="w-full">
             <Route className="w-4 h-4 mr-2" />
-            Plan New Route
+            {t.planNewRoute}
           </Button>
         </div>
       </div>
@@ -724,8 +724,8 @@ const FindRoutePage = () => {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-xl font-bold">Plan Safe Route</h1>
-          <p className="text-sm text-primary-foreground/80">Motorcycle-based routing with hazard avoidance</p>
+          <h1 className="text-xl font-bold">{t.planSafeRoute}</h1>
+          <p className="text-sm text-primary-foreground/80">{t.motorcycleRouting}</p>
         </div>
       </div>
 
@@ -735,35 +735,35 @@ const FindRoutePage = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500" />
-              Starting Point
+              {t.startingPoint}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[48px]">
               <MapPin className="w-5 h-5 text-green-500 flex-shrink-0" />
               <span className="text-sm flex-1">
-                {startCoords ? `${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}` : 'Not set'}
+                {startCoords ? `${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}` : t.notSet}
               </span>
             </div>
 
             <Tabs value={startInputMode} onValueChange={(v) => setStartInputMode(v as 'map' | 'coords')}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />Pick on Map</TabsTrigger>
-                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />Coordinates</TabsTrigger>
+                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />{t.pickOnMap}</TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />{t.coordinates}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="map" className="mt-3">
                 <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50" onClick={() => openPicker('start')}>
-                  <MapPin className="w-4 h-4 mr-2" />📍 Pin Start on Map
+                  <MapPin className="w-4 h-4 mr-2" />{t.pinStartOnMap}
                 </Button>
               </TabsContent>
 
               <TabsContent value="coords" className="mt-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">Latitude</Label><Input type="number" step="any" placeholder="11.5601" value={startLatInput} onChange={(e) => setStartLatInput(e.target.value)} /></div>
-                  <div><Label className="text-xs">Longitude</Label><Input type="number" step="any" placeholder="124.3949" value={startLngInput} onChange={(e) => setStartLngInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">{t.latitude}</Label><Input type="number" step="any" placeholder="11.5601" value={startLatInput} onChange={(e) => setStartLatInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">{t.longitude}</Label><Input type="number" step="any" placeholder="124.3949" value={startLngInput} onChange={(e) => setStartLngInput(e.target.value)} /></div>
                 </div>
-                <Button variant="outline" className="w-full" onClick={handleSetStartCoords}>Set Coordinates</Button>
+                <Button variant="outline" className="w-full" onClick={handleSetStartCoords}>{t.setCoordinates}</Button>
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -774,7 +774,7 @@ const FindRoutePage = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500" />
-              Destination
+              {t.destination}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -785,37 +785,37 @@ const FindRoutePage = () => {
                   ? selectedEvac 
                     ? evacCenters.find(c => c.id === selectedEvac)?.name || `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
                     : `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}`
-                  : 'Not set'}
+                  : t.notSet}
               </span>
             </div>
 
             <Tabs value={endInputMode} onValueChange={(v) => setEndInputMode(v as any)}>
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />Pick on Map</TabsTrigger>
-                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />Coordinates</TabsTrigger>
-                <TabsTrigger value="evac" className="text-xs"><Building2 className="w-3 h-3 mr-1" />Evac Center</TabsTrigger>
+                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />{t.pickOnMap}</TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />{t.coordinates}</TabsTrigger>
+                <TabsTrigger value="evac" className="text-xs"><Building2 className="w-3 h-3 mr-1" />{t.evacCenter}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="map" className="mt-3">
                 <Button variant="outline" className="w-full border-red-500 text-red-600 hover:bg-red-50" onClick={() => openPicker('end')}>
-                  <MapPin className="w-4 h-4 mr-2" />📍 Pin Destination on Map
+                  <MapPin className="w-4 h-4 mr-2" />{t.pinDestOnMap}
                 </Button>
               </TabsContent>
 
               <TabsContent value="coords" className="mt-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">Latitude</Label><Input type="number" step="any" placeholder="11.5601" value={endLatInput} onChange={(e) => setEndLatInput(e.target.value)} /></div>
-                  <div><Label className="text-xs">Longitude</Label><Input type="number" step="any" placeholder="124.3949" value={endLngInput} onChange={(e) => setEndLngInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">{t.latitude}</Label><Input type="number" step="any" placeholder="11.5601" value={endLatInput} onChange={(e) => setEndLatInput(e.target.value)} /></div>
+                  <div><Label className="text-xs">{t.longitude}</Label><Input type="number" step="any" placeholder="124.3949" value={endLngInput} onChange={(e) => setEndLngInput(e.target.value)} /></div>
                 </div>
-                <Button variant="outline" className="w-full" onClick={handleSetEndCoords}>Set Coordinates</Button>
+                <Button variant="outline" className="w-full" onClick={handleSetEndCoords}>{t.setCoordinates}</Button>
               </TabsContent>
 
               <TabsContent value="evac" className="mt-3">
                 <Select value={selectedEvac} onValueChange={handleSelectEvac}>
-                  <SelectTrigger><SelectValue placeholder="Choose an evacuation center" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.chooseEvacCenter} /></SelectTrigger>
                   <SelectContent>
                     {evacCenters.length === 0 ? (
-                      <SelectItem value="none" disabled>No evacuation centers available</SelectItem>
+                      <SelectItem value="none" disabled>{t.noEvacAvailable}</SelectItem>
                     ) : (
                       evacCenters.map((center) => (
                         <SelectItem key={center.id} value={center.id}>🏠 {center.name} - {center.location}</SelectItem>
@@ -831,15 +831,15 @@ const FindRoutePage = () => {
         {/* Generate Route Button */}
         <Button className="w-full h-12 text-base" disabled={!canGenerate || isGeneratingRoute} onClick={handleGenerateRoute}>
           {isGeneratingRoute ? (
-            <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Generating Route...</>
+            <><Loader2 className="w-5 h-5 mr-2 animate-spin" />{t.generatingRoute}</>
           ) : (
-            <><Navigation className="w-5 h-5 mr-2" />🏍️ Generate Safe Route</>
+            <><Navigation className="w-5 h-5 mr-2" />{t.generateSafeRouteBtn}</>
           )}
         </Button>
 
         {!canGenerate && (
           <p className="text-sm text-muted-foreground text-center">
-            Please set both start and destination points to generate a route
+            {t.setBothPoints}
           </p>
         )}
       </div>
