@@ -860,7 +860,7 @@ const SafetyMap = () => {
                     className="flex-1 text-xs"
                     onClick={() => setShowAltDirections(false)}
                   >
-                    Primary Route
+                    {t.primaryRoute}
                   </Button>
                   <Button
                     variant={showAltDirections ? 'default' : 'outline'}
