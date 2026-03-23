@@ -183,6 +183,119 @@ interface Translations {
   quickAccessEmergency: string;
   emergencyServices: string;
   nationalHotlines: string;
+
+  // Dashboard
+  welcomeUser: string;
+  stayInformed: string;
+  notSet: string;
+  viewMap: string;
+  emergencyContacts: string;
+  call: string;
+
+  // SafetyMap / Hazard Map
+  hazardMap: string;
+  pinStart: string;
+  pinEnd: string;
+  startSet: string;
+  endSet: string;
+  tapToSetStart: string;
+  tapToSetEnd: string;
+  generateRoute: string;
+  generating: string;
+  routeGenerated: string;
+  clear: string;
+  showLegend: string;
+  hideLegend: string;
+  legend: string;
+  hazardTypes: string;
+  floodLabel: string;
+  landslideLabel: string;
+  roadDamage: string;
+  roadObstruction: string;
+  other: string;
+  evacCenter: string;
+  severityLabel: string;
+  routes: string;
+  primarySafest: string;
+  alternative: string;
+  start: string;
+  distance: string;
+  estTime: string;
+  viewDirections: string;
+  hideDetails: string;
+  primaryRoute: string;
+  alternativeRoute: string;
+  safetyReminders: string;
+
+  // Find Route Page
+  planSafeRoute: string;
+  motorcycleRouting: string;
+  pickOnMap: string;
+  coordinates: string;
+  pinStartOnMap: string;
+  pinDestOnMap: string;
+  setCoordinates: string;
+  latitude: string;
+  longitude: string;
+  chooseEvacCenter: string;
+  noEvacAvailable: string;
+  generatingRoute: string;
+  generateSafeRouteBtn: string;
+  setBothPoints: string;
+  planNewRoute: string;
+  routeClear: string;
+  altRouteUsed: string;
+  hazardsPresent: string;
+
+  // Report Hazard
+  helpCommunity: string;
+  reportDetails: string;
+  selectHazardType: string;
+  selectBarangayLabel: string;
+  exactLocation: string;
+  pickLocationMap: string;
+  photoEvidence: string;
+  verificationRequired: string;
+  onlyVerifiedUpload: string;
+  upload: string;
+  fromGallery: string;
+  takePhoto: string;
+  openCamera: string;
+  submitting: string;
+  submitReport: string;
+  optional: string;
+  describeHazard: string;
+  flooding: string;
+
+  // Verification
+  identityVerification: string;
+  uploadIdSelfie: string;
+  governmentId: string;
+  faceSelfie: string;
+  uploadGovId: string;
+  driversLicense: string;
+  takeSelfie: string;
+  guidelines: string;
+  guidelineFaceMatch: string;
+  guidelineTextVisible: string;
+  guidelineLighting: string;
+  verifyIdentityDesc: string;
+  startVerification: string;
+  tryAgain: string;
+  verifiedDesc: string;
+  pendingDesc: string;
+  rejectedReason: string;
+  invalidFile: string;
+  selectImageFile: string;
+  fileTooLarge: string;
+  imageSizeLimit: string;
+  missingFiles: string;
+  uploadBothIdSelfie: string;
+  submissionFailed: string;
+  verificationSubmitted: string;
+
+  // Guardian Portal
+  guardianPortal: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -319,23 +432,17 @@ const translations: Record<Language, Translations> = {
     helpTitle: "Help",
     helpSubtitle: "Get assistance and learn more",
     faqReportQ: "What is SafeNav?",
-    faqReportA:
-      "SafeNav is a web-based mobile application that provides real-time hazard information and community guidance in Naval, Biliran. It allows users to report hazards, view verified hazards on a map, locate evacuation centers, generate safe routes, and access emergency hotlines and weather updates.",
+    faqReportA: "SafeNav is a web-based mobile application that provides real-time hazard information and community guidance in Naval, Biliran. It allows users to report hazards, view verified hazards on a map, locate evacuation centers, generate safe routes, and access emergency hotlines and weather updates.",
     faqVerifyQ: "How do I report a hazard?",
-    faqVerifyA:
-      "To report a hazard, open the SafeNav application and select the Report Hazard feature. Choose the hazard type, provide a description, and mark the location on the map. The report will be reviewed by administrators before it appears on the public hazard map.",
+    faqVerifyA: "To report a hazard, open the SafeNav application and select the Report Hazard feature. Choose the hazard type, provide a description, and mark the location on the map. The report will be reviewed by administrators before it appears on the public hazard map.",
     faqRouteQ: "How do I find a safe route?",
-    faqRouteA:
-      'Go to the Map page and use the "Find Route" feature. Select your starting point and destination (evacuation center), and the app will generate a safe route considering known hazards.',
+    faqRouteA: 'Go to the Map page and use the "Find Route" feature. Select your starting point and destination (evacuation center), and the app will generate a safe route considering known hazards.',
     faqIconsQ: "Why do I need to verify my identity before reporting hazards?",
-    faqIconsA:
-      "Users must submit a valid ID and a face selfie for verification to ensure that hazard reports are authentic and traceable. This helps prevent false reports and improves the reliability of the information shared in the system.",
+    faqIconsA: "Users must submit a valid ID and a face selfie for verification to ensure that hazard reports are authentic and traceable. This helps prevent false reports and improves the reliability of the information shared in the system.",
     faqEmergencyQ: "How do I call emergency services?",
-    faqEmergencyA:
-      "Go to the Hotlines page accessible from the bottom navigation. Tap on any number to directly call that emergency service. For life-threatening emergencies, always call 911 first.",
+    faqEmergencyA: "Go to the Hotlines page accessible from the bottom navigation. Tap on any number to directly call that emergency service. For life-threatening emergencies, always call 911 first.",
     faqLocationQ: "Do I need internet access to use SafeNav?",
-    faqLocationA:
-      "Yes. SafeNav requires an internet connection to load the map, update hazard reports, and access real-time information.",
+    faqLocationA: "Yes. SafeNav requires an internet connection to load the map, update hazard reports, and access real-time information.",
 
     profileTitle: "Profile",
     manageAccount: "Manage your account",
@@ -353,6 +460,117 @@ const translations: Record<Language, Translations> = {
     quickAccessEmergency: "Quick access to emergency services",
     emergencyServices: "Emergency Services",
     nationalHotlines: "National Hotlines",
+
+    // Dashboard
+    welcomeUser: "Welcome",
+    stayInformed: "Stay informed about hazards and emergencies in your area",
+    notSet: "Not set",
+    viewMap: "View Map",
+    emergencyContacts: "Emergency Contacts",
+    call: "Call",
+
+    // SafetyMap
+    hazardMap: "Hazard Map",
+    pinStart: "Pin Start",
+    pinEnd: "Pin End",
+    startSet: "✓ Start Set",
+    endSet: "✓ End Set",
+    tapToSetStart: "Tap map to set START",
+    tapToSetEnd: "Tap map to set DESTINATION",
+    generateRoute: "Generate Route",
+    generating: "Generating...",
+    routeGenerated: "Route Generated",
+    clear: "Clear",
+    showLegend: "Show Legend",
+    hideLegend: "Hide Legend",
+    legend: "Legend",
+    hazardTypes: "Hazard Types",
+    floodLabel: "Flood",
+    landslideLabel: "Landslide",
+    roadDamage: "Road Damage",
+    roadObstruction: "Road Obstruction",
+    other: "Other",
+    evacCenter: "Evac Center",
+    severityLabel: "Severity",
+    routes: "Routes",
+    primarySafest: "Primary (Safest)",
+    alternative: "Alternative",
+    start: "Start",
+    distance: "Distance",
+    estTime: "Est. Time",
+    viewDirections: "View Directions & Details",
+    hideDetails: "Hide Details",
+    primaryRoute: "Primary Route",
+    alternativeRoute: "Alternative Route",
+    safetyReminders: "Safety Reminders",
+
+    // Find Route Page
+    planSafeRoute: "Plan Safe Route",
+    motorcycleRouting: "Motorcycle-based routing with hazard avoidance",
+    pickOnMap: "Pick on Map",
+    coordinates: "Coordinates",
+    pinStartOnMap: "📍 Pin Start on Map",
+    pinDestOnMap: "📍 Pin Destination on Map",
+    setCoordinates: "Set Coordinates",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    chooseEvacCenter: "Choose an evacuation center",
+    noEvacAvailable: "No evacuation centers available",
+    generatingRoute: "Generating Route...",
+    generateSafeRouteBtn: "🏍️ Generate Safe Route",
+    setBothPoints: "Please set both start and destination points to generate a route",
+    planNewRoute: "Plan New Route",
+    routeClear: "ROUTE CLEAR",
+    altRouteUsed: "ALT. ROUTE USED",
+    hazardsPresent: "HAZARDS PRESENT",
+
+    // Report Hazard
+    helpCommunity: "Help keep your community safe",
+    reportDetails: "Report Details",
+    selectHazardType: "Select hazard type",
+    selectBarangayLabel: "Select barangay",
+    exactLocation: "Exact Location",
+    pickLocationMap: "📍 Pick Location on Map",
+    photoEvidence: "Photo Evidence",
+    verificationRequired: "Verification Required",
+    onlyVerifiedUpload: "Only verified users can upload photos. Please verify your identity first.",
+    upload: "Upload",
+    fromGallery: "From gallery",
+    takePhoto: "Take Photo",
+    openCamera: "Open camera",
+    submitting: "Submitting...",
+    submitReport: "Submit Report",
+    optional: "Optional",
+    describeHazard: "Describe the hazard in detail...",
+    flooding: "Flooding",
+
+    // Verification
+    identityVerification: "Identity Verification",
+    uploadIdSelfie: "Upload your government ID and a face selfie for verification.",
+    governmentId: "Government ID",
+    faceSelfie: "Face Selfie",
+    uploadGovId: "Upload Government ID",
+    driversLicense: "Driver's License, Passport, etc.",
+    takeSelfie: "Take Selfie",
+    guidelines: "Guidelines",
+    guidelineFaceMatch: "Ensure your face in the selfie matches the ID photo",
+    guidelineTextVisible: "All text on ID must be clearly visible",
+    guidelineLighting: "Good lighting, no shadows or glare",
+    verifyIdentityDesc: "Verify your identity with a government ID and face selfie to unlock full SafeNav features.",
+    startVerification: "Start Verification",
+    tryAgain: "Try Again",
+    verifiedDesc: "Your identity has been verified by SafeNav administrators.",
+    pendingDesc: "Your ID and selfie are being reviewed. Please wait for admin approval.",
+    rejectedReason: "Reason",
+    invalidFile: "Invalid File",
+    selectImageFile: "Please select an image file",
+    fileTooLarge: "File Too Large",
+    imageSizeLimit: "Image must be less than 5MB",
+    missingFiles: "Missing Files",
+    uploadBothIdSelfie: "Please upload both your ID and selfie",
+    submissionFailed: "Submission Failed",
+    verificationSubmitted: "Verification submitted successfully! Please wait for admin review.",
+    guardianPortal: "Guardian Portal",
   },
   fil: {
     signIn: "Mag-login",
@@ -487,23 +705,17 @@ const translations: Record<Language, Translations> = {
     helpTitle: "Tulong",
     helpSubtitle: "Kumuha ng tulong at matuto pa",
     faqReportQ: "Ano ang SafeNav?",
-    faqReportA:
-      "Ang SafeNav ay isang web-based na mobile application na nagbibigay ng real-time na impormasyon tungkol sa mga panganib at gabay sa komunidad sa Naval, Biliran. Pinahihintulutan nito ang mga gumagamit na mag-ulat ng mga panganib, makita ang mga beripikadong hazard sa mapa, hanapin ang mga evacuation center, gumawa ng ligtas na ruta, at ma-access ang mga emergency hotline at mga update sa panahon.",
+    faqReportA: "Ang SafeNav ay isang web-based na mobile application na nagbibigay ng real-time na impormasyon tungkol sa mga panganib at gabay sa komunidad sa Naval, Biliran. Pinahihintulutan nito ang mga gumagamit na mag-ulat ng mga panganib, makita ang mga beripikadong hazard sa mapa, hanapin ang mga evacuation center, gumawa ng ligtas na ruta, at ma-access ang mga emergency hotline at mga update sa panahon.",
     faqVerifyQ: "Paano ako makakapag-ulat ng panganib?",
-    faqVerifyA:
-      "Upang makapag-ulat ng panganib, buksan ang SafeNav application at piliin ang Report Hazard na feature. Piliin ang uri ng panganib, magbigay ng paglalarawan, at markahan ang lokasyon nito sa mapa. Susuriin muna ng mga administrador ang ulat bago ito lumabas sa pampublikong hazard map.",
+    faqVerifyA: "Upang makapag-ulat ng panganib, buksan ang SafeNav application at piliin ang Report Hazard na feature. Piliin ang uri ng panganib, magbigay ng paglalarawan, at markahan ang lokasyon nito sa mapa. Susuriin muna ng mga administrador ang ulat bago ito lumabas sa pampublikong hazard map.",
     faqRouteQ: "Paano makahanap ng ligtas na ruta?",
-    faqRouteA:
-      'Pumunta sa pahina ng Mapa at gamitin ang "Maghanap ng Ruta" na feature. Piliin ang iyong panimulang punto at destinasyon (evacuation center), at gagawa ang app ng ligtas na ruta na may paalala sa mga kilalang panganib.',
+    faqRouteA: 'Pumunta sa pahina ng Mapa at gamitin ang "Maghanap ng Ruta" na feature. Piliin ang iyong panimulang punto at destinasyon (evacuation center), at gagawa ang app ng ligtas na ruta na may paalala sa mga kilalang panganib.',
     faqIconsQ: "Bakit kailangan kong beripikahin ang aking pagkakakilanlan bago makapag-ulat ng panganib?",
-    faqIconsA:
-      "Kinakailangang magsumite ang mga gumagamit ng balidong ID at selfie upang mapatunayan ang kanilang pagkakakilanlan. Ginagawa ito upang matiyak na ang mga ulat ay totoo, mapagkakatiwalaan, at may pananagutan ang nag-ulat. Nakakatulong din ito upang maiwasan ang maling impormasyon sa sistema.",
+    faqIconsA: "Kinakailangang magsumite ang mga gumagamit ng balidong ID at selfie upang mapatunayan ang kanilang pagkakakilanlan. Ginagawa ito upang matiyak na ang mga ulat ay totoo, mapagkakatiwalaan, at may pananagutan ang nag-ulat. Nakakatulong din ito upang maiwasan ang maling impormasyon sa sistema.",
     faqEmergencyQ: "Paano tumawag sa mga serbisyong pang-emergency?",
-    faqEmergencyA:
-      "Pumunta sa pahina ng Mga Hotline na maa-access mula sa ibabang navigation. Pindutin ang anumang numero para direktang tawagan ang serbisyong pang-emergency na iyon. Para sa mga banta sa buhay na emergency, laging tumawag muna sa 911.",
+    faqEmergencyA: "Pumunta sa pahina ng Mga Hotline na maa-access mula sa ibabang navigation. Pindutin ang anumang numero para direktang tawagan ang serbisyong pang-emergency na iyon. Para sa mga banta sa buhay na emergency, laging tumawag muna sa 911.",
     faqLocationQ: "Kailangan ba ng internet connection upang magamit ang SafeNav?",
-    faqLocationA:
-      "Oo. Kinakailangan ang internet connection upang ma-load ang mapa, ma-update ang mga ulat ng panganib, at ma-access ang real-time na impormasyon sa loob ng aplikasyon.",
+    faqLocationA: "Oo. Kinakailangan ang internet connection upang ma-load ang mapa, ma-update ang mga ulat ng panganib, at ma-access ang real-time na impormasyon sa loob ng aplikasyon.",
 
     profileTitle: "Profile",
     manageAccount: "Pamahalaan ang iyong account",
@@ -521,6 +733,117 @@ const translations: Record<Language, Translations> = {
     quickAccessEmergency: "Mabilis na access sa mga serbisyo ng emergency",
     emergencyServices: "Mga Serbisyo ng Emergency",
     nationalHotlines: "Mga Pambansang Hotline",
+
+    // Dashboard
+    welcomeUser: "Maligayang pagbabalik",
+    stayInformed: "Manatiling updated sa mga panganib at emergency sa iyong lugar",
+    notSet: "Hindi pa nakatakda",
+    viewMap: "Tingnan ang Mapa",
+    emergencyContacts: "Mga Emergency Contact",
+    call: "Tawagan",
+
+    // SafetyMap
+    hazardMap: "Mapa ng Panganib",
+    pinStart: "I-pin ang Simula",
+    pinEnd: "I-pin ang Dulo",
+    startSet: "✓ Simula Nakatakda",
+    endSet: "✓ Dulo Nakatakda",
+    tapToSetStart: "Pindutin ang mapa para itakda ang SIMULA",
+    tapToSetEnd: "Pindutin ang mapa para itakda ang DESTINASYON",
+    generateRoute: "Gumawa ng Ruta",
+    generating: "Ginagawa...",
+    routeGenerated: "Nagawa na ang Ruta",
+    clear: "Burahin",
+    showLegend: "Ipakita ang Legend",
+    hideLegend: "Itago ang Legend",
+    legend: "Legend",
+    hazardTypes: "Mga Uri ng Panganib",
+    floodLabel: "Baha",
+    landslideLabel: "Pagguho ng Lupa",
+    roadDamage: "Sira sa Kalsada",
+    roadObstruction: "Harang sa Kalsada",
+    other: "Iba pa",
+    evacCenter: "Evac Center",
+    severityLabel: "Kalubhaan",
+    routes: "Mga Ruta",
+    primarySafest: "Pangunahin (Pinakaligtas)",
+    alternative: "Alternatibo",
+    start: "Simula",
+    distance: "Distansya",
+    estTime: "Tinatayang Oras",
+    viewDirections: "Tingnan ang Mga Direksyon at Detalye",
+    hideDetails: "Itago ang Detalye",
+    primaryRoute: "Pangunahing Ruta",
+    alternativeRoute: "Alternatibong Ruta",
+    safetyReminders: "Mga Paalala sa Kaligtasan",
+
+    // Find Route Page
+    planSafeRoute: "Magplano ng Ligtas na Ruta",
+    motorcycleRouting: "Ruta gamit ang motorsiklo na umiiwas sa panganib",
+    pickOnMap: "Pumili sa Mapa",
+    coordinates: "Mga Koordinada",
+    pinStartOnMap: "📍 I-pin ang Simula sa Mapa",
+    pinDestOnMap: "📍 I-pin ang Destinasyon sa Mapa",
+    setCoordinates: "Itakda ang Koordinada",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    chooseEvacCenter: "Pumili ng evacuation center",
+    noEvacAvailable: "Walang available na evacuation center",
+    generatingRoute: "Ginagawa ang Ruta...",
+    generateSafeRouteBtn: "🏍️ Gumawa ng Ligtas na Ruta",
+    setBothPoints: "Mangyaring itakda ang simula at destinasyon para makagawa ng ruta",
+    planNewRoute: "Magplano ng Bagong Ruta",
+    routeClear: "RUTA MALINIS",
+    altRouteUsed: "ALT. RUTA GINAMIT",
+    hazardsPresent: "MAY MGA PANGANIB",
+
+    // Report Hazard
+    helpCommunity: "Tumulong na panatilihing ligtas ang iyong komunidad",
+    reportDetails: "Mga Detalye ng Ulat",
+    selectHazardType: "Pumili ng uri ng panganib",
+    selectBarangayLabel: "Pumili ng barangay",
+    exactLocation: "Eksaktong Lokasyon",
+    pickLocationMap: "📍 Pumili ng Lokasyon sa Mapa",
+    photoEvidence: "Ebidensya ng Larawan",
+    verificationRequired: "Kailangan ng Beripikasyon",
+    onlyVerifiedUpload: "Tanging mga na-verify na gumagamit lang ang makakapag-upload ng larawan. Mangyaring i-verify muna ang iyong pagkakakilanlan.",
+    upload: "I-upload",
+    fromGallery: "Mula sa gallery",
+    takePhoto: "Kumuha ng Larawan",
+    openCamera: "Buksan ang camera",
+    submitting: "Isinusumite...",
+    submitReport: "Isumite ang Ulat",
+    optional: "Opsyonal",
+    describeHazard: "Ilarawan ang panganib nang detalyado...",
+    flooding: "Pagbaha",
+
+    // Verification
+    identityVerification: "Beripikasyon ng Pagkakakilanlan",
+    uploadIdSelfie: "I-upload ang iyong government ID at face selfie para sa beripikasyon.",
+    governmentId: "Government ID",
+    faceSelfie: "Face Selfie",
+    uploadGovId: "I-upload ang Government ID",
+    driversLicense: "Driver's License, Passport, atbp.",
+    takeSelfie: "Kumuha ng Selfie",
+    guidelines: "Mga Panuntunan",
+    guidelineFaceMatch: "Siguraduhing ang mukha sa selfie ay tumutugma sa ID photo",
+    guidelineTextVisible: "Lahat ng teksto sa ID ay dapat malinaw na makita",
+    guidelineLighting: "Magandang ilaw, walang anino o silaw",
+    verifyIdentityDesc: "I-verify ang iyong pagkakakilanlan gamit ang government ID at face selfie para ma-unlock ang lahat ng feature ng SafeNav.",
+    startVerification: "Simulan ang Beripikasyon",
+    tryAgain: "Subukan Muli",
+    verifiedDesc: "Na-verify na ang iyong pagkakakilanlan ng mga administrator ng SafeNav.",
+    pendingDesc: "Sinusuri na ang iyong ID at selfie. Mangyaring hintayin ang pag-apruba ng admin.",
+    rejectedReason: "Dahilan",
+    invalidFile: "Hindi Wastong File",
+    selectImageFile: "Mangyaring pumili ng image file",
+    fileTooLarge: "Masyadong Malaki ang File",
+    imageSizeLimit: "Ang larawan ay dapat mas mababa sa 5MB",
+    missingFiles: "Kulang ang mga File",
+    uploadBothIdSelfie: "Mangyaring i-upload ang iyong ID at selfie",
+    submissionFailed: "Nabigong Isumite",
+    verificationSubmitted: "Matagumpay na naisumite ang beripikasyon! Mangyaring hintayin ang pagsusuri ng admin.",
+    guardianPortal: "Portal ng Guardian",
   },
   ceb: {
     signIn: "Mo-sulod",
@@ -655,23 +978,17 @@ const translations: Record<Language, Translations> = {
     helpTitle: "Tabang",
     helpSubtitle: "Pagkuha ug tabang ug pagkat-on pa",
     faqReportQ: "Unsa ang SafeNav?",
-    faqReportA:
-      "Ang SafeNav usa ka web-based nga mobile application nga naghatag og real-time nga impormasyon bahin sa mga peligro ug giya sa komunidad sa Naval, Biliran. Gitugotan niini ang mga user nga mag-report og peligro, motan-aw sa mga na-verify nga peligro sa mapa, mangita og evacuation centers, makahimo og luwas nga ruta, ug maka-access sa emergency hotlines ug weather updates.",
+    faqReportA: "Ang SafeNav usa ka web-based nga mobile application nga naghatag og real-time nga impormasyon bahin sa mga peligro ug giya sa komunidad sa Naval, Biliran. Gitugotan niini ang mga user nga mag-report og peligro, motan-aw sa mga na-verify nga peligro sa mapa, mangita og evacuation centers, makahimo og luwas nga ruta, ug maka-access sa emergency hotlines ug weather updates.",
     faqVerifyQ: "Unsaon nako pag-report sa usa ka peligro?",
-    faqVerifyA:
-      "Aron maka-report og peligro, ablihi ang SafeNav application ug pilia ang “Report Hazard” nga feature. Pilia ang klase sa peligro, ihatag ang mubo nga deskripsyon, ug markahi ang lokasyon niini sa mapa. Ang report susihon sa mga administrador una kini ipakita sa publiko nga hazard map.",
+    faqVerifyA: "Aron maka-report og peligro, ablihi ang SafeNav application ug pilia ang \"Report Hazard\" nga feature. Pilia ang klase sa peligro, ihatag ang mubo nga deskripsyon, ug markahi ang lokasyon niini sa mapa. Ang report susihon sa mga administrador una kini ipakita sa publiko nga hazard map.",
     faqRouteQ: "Unsaon pagpangita ug luwas nga ruta?",
-    faqRouteA:
-      'Adto sa pahina sa Mapa ug gamita ang "Pangita ug Ruta" nga feature. Pilia ang imong sinugdanan nga punto ug destinasyon (evacuation center), ug ang app maghimo ug luwas nga ruta nga molikay sa mga nahibaloan nga kakuyaw.',
+    faqRouteA: 'Adto sa pahina sa Mapa ug gamita ang "Pangita ug Ruta" nga feature. Pilia ang imong sinugdanan nga punto ug destinasyon (evacuation center), ug ang app maghimo ug luwas nga ruta nga molikay sa mga nahibaloan nga kakuyaw.',
     faqIconsQ: "Ngano nga kinahanglan nako i-verify ang akong identidad sa dili pa maka-report og peligro?",
-    faqIconsA:
-      "Kinahanglan nga ang mga user mosumite og valid ID ug face selfie aron ma-verify ang ilang identidad. Kini gihimo aron masiguro nga ang mga report tinuod ug masaligan, ug aron malikayan ang maling o peke nga report sa sistema.",
+    faqIconsA: "Kinahanglan nga ang mga user mosumite og valid ID ug face selfie aron ma-verify ang ilang identidad. Kini gihimo aron masiguro nga ang mga report tinuod ug masaligan, ug aron malikayan ang maling o peke nga report sa sistema.",
     faqEmergencyQ: "Unsaon pagtawag sa mga serbisyo sa emergency?",
-    faqEmergencyA:
-      "Adto sa pahina sa Mga Hotline nga ma-access gikan sa ubos nga navigation. I-tap ang bisan unsang numero aron direkta nga tawagan ang maong serbisyo sa emergency. Para sa mga emergency nga nagthreat sa kinabuhi, kanunay tawagi una ang 911.",
+    faqEmergencyA: "Adto sa pahina sa Mga Hotline nga ma-access gikan sa ubos nga navigation. I-tap ang bisan unsang numero aron direkta nga tawagan ang maong serbisyo sa emergency. Para sa mga emergency nga nagthreat sa kinabuhi, kanunay tawagi una ang 911.",
     faqLocationQ: "Kinahanglan ba og internet connection aron magamit ang SafeNav?",
-    faqLocationA:
-      "Oo. Kinahanglan og internet connection aron ma-load ang mapa, ma-update ang mga hazard report, ug ma-access ang real-time nga impormasyon sa SafeNav.",
+    faqLocationA: "Oo. Kinahanglan og internet connection aron ma-load ang mapa, ma-update ang mga hazard report, ug ma-access ang real-time nga impormasyon sa SafeNav.",
 
     profileTitle: "Profile",
     manageAccount: "Pagdumala sa imong account",
@@ -689,6 +1006,117 @@ const translations: Record<Language, Translations> = {
     quickAccessEmergency: "Dali nga access sa mga serbisyo sa emergency",
     emergencyServices: "Mga Serbisyo sa Emergency",
     nationalHotlines: "Mga Nasudnon nga Hotline",
+
+    // Dashboard
+    welcomeUser: "Welcome",
+    stayInformed: "Magpabilin nga updated sa mga kakuyaw ug emergency sa imong lugar",
+    notSet: "Wala pa na-set",
+    viewMap: "Tan-awa ang Mapa",
+    emergencyContacts: "Mga Emergency Contact",
+    call: "Tawagi",
+
+    // SafetyMap
+    hazardMap: "Mapa sa Kakuyaw",
+    pinStart: "I-pin ang Sugod",
+    pinEnd: "I-pin ang Katapusan",
+    startSet: "✓ Sugod Na-set",
+    endSet: "✓ Katapusan Na-set",
+    tapToSetStart: "I-tap ang mapa aron i-set ang SUGOD",
+    tapToSetEnd: "I-tap ang mapa aron i-set ang DESTINASYON",
+    generateRoute: "Paghimo ug Ruta",
+    generating: "Naghimo...",
+    routeGenerated: "Nahimo na ang Ruta",
+    clear: "I-clear",
+    showLegend: "Ipakita ang Legend",
+    hideLegend: "Itago ang Legend",
+    legend: "Legend",
+    hazardTypes: "Mga Klase sa Kakuyaw",
+    floodLabel: "Baha",
+    landslideLabel: "Pagdahili sa Yuta",
+    roadDamage: "Guba sa Kalsada",
+    roadObstruction: "Babag sa Kalsada",
+    other: "Uban pa",
+    evacCenter: "Evac Center",
+    severityLabel: "Kaguol",
+    routes: "Mga Ruta",
+    primarySafest: "Panguna (Pinaka-luwas)",
+    alternative: "Alternatibo",
+    start: "Sugod",
+    distance: "Distansya",
+    estTime: "Gibanabana nga Oras",
+    viewDirections: "Tan-awa ang mga Direksyon ug Detalye",
+    hideDetails: "Itago ang Detalye",
+    primaryRoute: "Panguna nga Ruta",
+    alternativeRoute: "Alternatibo nga Ruta",
+    safetyReminders: "Mga Pahinumdom sa Kaluwasan",
+
+    // Find Route Page
+    planSafeRoute: "Pagplano ug Luwas nga Ruta",
+    motorcycleRouting: "Ruta gamit ang motorsiklo nga molikay sa kakuyaw",
+    pickOnMap: "Pili sa Mapa",
+    coordinates: "Mga Koordinada",
+    pinStartOnMap: "📍 I-pin ang Sugod sa Mapa",
+    pinDestOnMap: "📍 I-pin ang Destinasyon sa Mapa",
+    setCoordinates: "I-set ang Koordinada",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    chooseEvacCenter: "Pagpili og evacuation center",
+    noEvacAvailable: "Walay available nga evacuation center",
+    generatingRoute: "Naghimo ug Ruta...",
+    generateSafeRouteBtn: "🏍️ Paghimo ug Luwas nga Ruta",
+    setBothPoints: "Palihog i-set ang sugod ug destinasyon aron makahimo og ruta",
+    planNewRoute: "Pagplano ug Bag-ong Ruta",
+    routeClear: "RUTA LIMPYO",
+    altRouteUsed: "ALT. RUTA GIGAMIT",
+    hazardsPresent: "ADUNAY MGA KAKUYAW",
+
+    // Report Hazard
+    helpCommunity: "Tabangi nga luwas ang imong komunidad",
+    reportDetails: "Mga Detalye sa Report",
+    selectHazardType: "Pagpili og klase sa kakuyaw",
+    selectBarangayLabel: "Pagpili og barangay",
+    exactLocation: "Eksaktong Lokasyon",
+    pickLocationMap: "📍 Pagpili og Lokasyon sa Mapa",
+    photoEvidence: "Ebidensya sa Litrato",
+    verificationRequired: "Kinahanglan ang Beripikasyon",
+    onlyVerifiedUpload: "Mga na-verify lang nga user ang makaupload og litrato. Palihog i-verify una ang imong identidad.",
+    upload: "I-upload",
+    fromGallery: "Gikan sa gallery",
+    takePhoto: "Pagkuha og Litrato",
+    openCamera: "Ablihi ang camera",
+    submitting: "Gisumite...",
+    submitReport: "Isumite ang Report",
+    optional: "Opsyonal",
+    describeHazard: "Ihulagway ang kakuyaw sa detalyado...",
+    flooding: "Pagbaha",
+
+    // Verification
+    identityVerification: "Beripikasyon sa Identidad",
+    uploadIdSelfie: "I-upload ang imong government ID ug face selfie para sa beripikasyon.",
+    governmentId: "Government ID",
+    faceSelfie: "Face Selfie",
+    uploadGovId: "I-upload ang Government ID",
+    driversLicense: "Driver's License, Passport, ug uban pa.",
+    takeSelfie: "Pagkuha og Selfie",
+    guidelines: "Mga Giya",
+    guidelineFaceMatch: "Siguroha nga ang nawong sa selfie motugma sa ID photo",
+    guidelineTextVisible: "Ang tanan nga teksto sa ID kinahanglan klaro nga makita",
+    guidelineLighting: "Maayong kahayag, walay anino o silak",
+    verifyIdentityDesc: "I-verify ang imong identidad gamit ang government ID ug face selfie aron ma-unlock ang tanan nga feature sa SafeNav.",
+    startVerification: "Sugdi ang Beripikasyon",
+    tryAgain: "Sulayi Pag-usab",
+    verifiedDesc: "Na-verify na ang imong identidad sa mga administrator sa SafeNav.",
+    pendingDesc: "Gisusi na ang imong ID ug selfie. Palihog hulata ang pag-apruba sa admin.",
+    rejectedReason: "Rason",
+    invalidFile: "Dili Sakto nga File",
+    selectImageFile: "Palihog pagpili og image file",
+    fileTooLarge: "Sobra ka Dako ang File",
+    imageSizeLimit: "Ang litrato kinahanglan ubos sa 5MB",
+    missingFiles: "Kulang ang mga File",
+    uploadBothIdSelfie: "Palihog i-upload ang imong ID ug selfie",
+    submissionFailed: "Napakyas ang Pagsumite",
+    verificationSubmitted: "Malampuson nga nasumite ang beripikasyon! Palihog hulata ang pagsusi sa admin.",
+    guardianPortal: "Portal sa Guardian",
   },
 };
 
@@ -704,7 +1132,6 @@ const STORAGE_KEY = "safenav-language";
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    // Load from localStorage on initial mount
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored && (stored === "en" || stored === "fil" || stored === "ceb")) {
       return stored as Language;
@@ -718,7 +1145,6 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Sync with localStorage on mount
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored && (stored === "en" || stored === "fil" || stored === "ceb")) {
       setLanguageState(stored as Language);
