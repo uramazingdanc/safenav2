@@ -508,13 +508,13 @@ const FindRoutePage = () => {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'ROUTE_CLEAR':
-        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+        return { label: t.routeClear, className: 'bg-green-500 text-white' };
       case 'ALTERNATIVE_ROUTE_USED':
-        return { label: 'ALT. ROUTE USED', className: 'bg-blue-500 text-white' };
+        return { label: t.altRouteUsed, className: 'bg-blue-500 text-white' };
       case 'HAZARDS_PRESENT_NO_ALTERNATIVE':
-        return { label: 'HAZARDS PRESENT', className: 'bg-amber-400 text-amber-900' };
+        return { label: t.hazardsPresent, className: 'bg-amber-400 text-amber-900' };
       default:
-        return { label: 'ROUTE CLEAR', className: 'bg-green-500 text-white' };
+        return { label: t.routeClear, className: 'bg-green-500 text-white' };
     }
   };
 
