@@ -709,7 +709,7 @@ const FindRoutePage = () => {
         <div className="p-3 bg-background border-t">
           <Button onClick={handleReset} variant="outline" className="w-full">
             <Route className="w-4 h-4 mr-2" />
-            Plan New Route
+            {t.planNewRoute}
           </Button>
         </div>
       </div>
