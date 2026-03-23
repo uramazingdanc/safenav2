@@ -791,9 +791,9 @@ const FindRoutePage = () => {
 
             <Tabs value={endInputMode} onValueChange={(v) => setEndInputMode(v as any)}>
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />Pick on Map</TabsTrigger>
-                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />Coordinates</TabsTrigger>
-                <TabsTrigger value="evac" className="text-xs"><Building2 className="w-3 h-3 mr-1" />Evac Center</TabsTrigger>
+                <TabsTrigger value="map" className="text-xs"><MapPin className="w-3 h-3 mr-1" />{t.pickOnMap}</TabsTrigger>
+                <TabsTrigger value="coords" className="text-xs"><Keyboard className="w-3 h-3 mr-1" />{t.coordinates}</TabsTrigger>
+                <TabsTrigger value="evac" className="text-xs"><Building2 className="w-3 h-3 mr-1" />{t.evacCenter}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="map" className="mt-3">
